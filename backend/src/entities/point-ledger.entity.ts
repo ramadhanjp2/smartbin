@@ -29,7 +29,7 @@ export class PointLedgerEntity {
   @Column({ type: "enum", enum: ["DEPOSIT", "REDEEM", "ADJUST"] })
   reason!: "DEPOSIT" | "REDEEM" | "ADJUST";
 
-  @Column({ name: "reference_id", length: 100 })
+  @Column({ name: "reference_id", type: "varchar", length: 100 })
   referenceId!: string;
 
   @CreateDateColumn({ name: "created_at", precision: 3 })
