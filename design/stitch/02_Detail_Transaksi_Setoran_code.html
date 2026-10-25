@@ -1,0 +1,268 @@
+<!DOCTYPE html><html lang="id" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><meta content="mobile_tab" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{width:100%;min-height:100%;margin:0;padding:0;}body{overscroll-behavior:none;background-color:#f0fdf1;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "text-primary": "#1B5E20", "surface-container-lowest": "#ffffff", "on-secondary-fixed-variant": "#005318", "surface-container-highest": "#d9e6da", "inverse-surface": "#28332b", "on-primary-container": "#90d689", "secondary-fixed-dim": "#83da85", "secondary-container": "#9cf49c", "tertiary-fixed": "#bdefbe", "on-error-container": "#93000a", "text-secondary": "#2E4732", "text-muted": "#527357", "on-primary-fixed": "#002203", "outline-variant": "#c0c9bb", "surface-tint": "#2a6b2c", "surface-variant": "#d9e6da", "on-tertiary-fixed": "#002109", "on-secondary-fixed": "#002105", "inverse-primary": "#91d78a", "tertiary-container": "#2f5b36", "status-success": "#388E3C", "on-background": "#131e17", "on-primary-fixed-variant": "#0c5216", "primary-container": "#1b5e20", "error": "#ba1a1a", "surface-container": "#e4f1e5", "surface-container-high": "#dfece0", "surface-bright": "#f0fdf1", "on-tertiary-container": "#a0d1a2", "background": "#f0fdf1", "primary-fixed": "#acf4a4", "on-tertiary": "#ffffff", "surface-card": "#FFFFFF", "inverse-on-surface": "#e7f4e8", "status-warning": "#F57C00", "surface": "#f0fdf1", "secondary-fixed": "#9ff79f", "on-surface": "#131e17", "on-primary": "#ffffff", "surface-dim": "#d0ddd2", "primary": "#00450d", "tertiary": "#174321", "on-error": "#ffffff", "on-surface-variant": "#41493e", "outline": "#717a6d", "tertiary-fixed-dim": "#a2d3a4", "primary-fixed-dim": "#91d78a", "error-container": "#ffdad6", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#24502c", "on-secondary-container": "#19722b", "secondary": "#126d27", "border-subtle": "#C8E6C9", "status-error": "#D32F2F", "surface-container-low": "#eaf7eb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "margin-mobile": "1rem", "space-md": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem", "space-lg": "1.5rem", "margin": "1.25rem", "space-xs": "0.25rem", "space-xl": "2rem" }, "fontFamily": { "body-sm": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "headline-lg-mobile": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"] }, "fontSize": { "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-lg-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "700" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen selection:bg-secondary-container selection:text-text-primary"><header class="fixed top-0 inset-x-0 z-50 bg-surface-card/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(27,94,32,0.06)] pt-safe"><div class="flex justify-between items-center px-margin h-6 pt-1 text-text-muted font-label-sm text-label-sm select-none"><span class="font-label-md text-label-md text-on-surface font-semibold">09:41</span><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[16px]">wifi</span><span class="material-symbols-outlined text-[18px]">battery_full</span></div></div><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="SmartBIN Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA74Ovr30VtS7vkC9bXdKPrWr-E31RS6tbD_CmijXRqCIr113_EBiM85HG2wgASUkG9NMAePafiCY3CwRNC6FgNFV5Q0GDqPkbBFYbmsGUP_txU68NcC1WmRj0Pqc4yedRSsRNuQajuFA2YDOMBCLAfnZWBIthooep7o33AMeMQAhwieetKp6NxlHu6mI9SJO_2qYLPTmwfwhSWAO8bKi7CS2pezNIi09MAhJ9tUbvClWwgEr8Q4eD1oQ"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-text-primary leading-tight font-bold tracking-tight">SmartBIN</span><span class="font-label-sm text-label-sm text-text-muted">Riwayat</span></div></div><div class="flex items-center gap-space-sm"><button aria-label="Notifikasi" class="relative w-11 h-11 rounded-full flex items-center justify-center text-text-primary hover:bg-surface-container active:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[24px]">notifications</span><span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-status-error ring-2 ring-surface-card"></span></button><button aria-label="Profil Mahasiswa" class="relative w-11 h-11 rounded-full flex items-center justify-center overflow-hidden hover:opacity-95 transition-opacity"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-border-subtle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmSVUJ39Tp65IbqHza72LlOe68uapAKH6usz5zsFOqP6tgQzsZ73Z7tUL_2xJLK6a-JR9tEour1OV-IGxeA5U_HKa04OHRLQYR37PvwgyGVvF8_ibVJOVBkZrRagGqNmSW51cdZZcgW5ACyRXrjKFkqHKvmqVQ9kyNCbD9w-2zmWw1RVpclF4hyWAwaSDw3IZgYD035xrDndlqSnMxCGbJeGweFl15WJ0vohvVeuj3iD4FjAHGATaioA"></button></div></div></header><main class="flex flex-col relative w-full pt-[88px] pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin-mobile pb-space-lg gap-space-md">
+<!-- Navigasi Internal Layar Detail -->
+<div class="flex items-center justify-between pt-space-xs pb-space-xs">
+<button aria-label="Kembali ke Riwayat" class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card shadow-sm text-text-primary active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[22px]">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-headline-sm text-headline-sm text-on-surface">Detail Transaksi</span>
+<span class="font-label-sm text-label-sm text-text-muted">Kode: S07 Setoran</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Bagikan Bukti" class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card shadow-sm text-text-primary active:scale-95 transition-transform" id="btn-share" type="button">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+</div>
+<!-- Hero Status Card (Terkreditasi & Poin Didapat) -->
+<div class="relative overflow-hidden bg-surface-card rounded-[24px] p-space-lg shadow-sm flex flex-col items-center text-center">
+<!-- Ambient Decor Shapes -->
+<div class="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-secondary-container/40 blur-xl pointer-events-none"></div>
+<div class="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-primary-fixed/30 blur-lg pointer-events-none"></div>
+<!-- Verification Badge -->
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low text-text-primary mb-space-sm">
+<span class="material-symbols-outlined text-[16px] text-status-success" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-md text-label-md">Terkreditasi ke Saldo KTM</span>
+</div>
+<!-- Big Points Typography -->
+<div class="flex items-baseline justify-center gap-1 my-1">
+<span class="font-display-lg text-display-lg text-text-primary tracking-tight font-extrabold">+120</span>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">Poin</span>
+</div>
+<!-- Subtitle & Timestamp -->
+<p class="font-label-lg text-label-lg text-text-secondary mt-1">
+      Setoran Sampah Anorganik (Botol Plastik PET)
+    </p>
+<div class="flex items-center gap-1.5 text-text-muted font-body-sm text-body-sm mt-1.5">
+<span class="material-symbols-outlined text-[15px]">schedule</span>
+<span class="">24 Okt 2026, 10:15 WIB</span>
+</div>
+<!-- Mini Progress Pill (Micro Feedback) -->
+<div class="w-full bg-surface-container-low rounded-full h-1.5 mt-space-md overflow-hidden">
+<div class="bg-primary-container h-full rounded-full w-full"></div>
+</div>
+</div>
+<!-- Visual Mock / Context Preview Foto Mesin -->
+<div class="relative bg-surface-card rounded-[20px] overflow-hidden shadow-sm p-space-md flex items-center gap-space-md">
+<div class="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A clean, smart university IoT recycling station with soft green neon accents, load cell platform, and student scanning their card in a modern university library lobby with gentle daylight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBIjXOCF9CedPfjO7qvUTc-hqk1V_1hnNe_tPiF0SVqkY12wN0tUTfxIA2icLfllOc-j9gU-c5pF76nJLvg11amZBMmCHgnbQc6x1wIc827XFDQJ8BQwrbJUQRoKpqex94xJ70F0MsaggoQY35XHQ0siXD71EhWzGTzFmZ4BbyWsiv_m1zLmHd2zf7O7kZlRRrwK9tSU8FKP-gkXaKuenlsn0n8axs0RE2yb8HaaboQQiNy8hPrtB7AA">
+<div class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-surface-card/90 font-label-sm text-[9px] text-text-primary font-bold">SmartBIN</div>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center gap-1 text-text-muted font-label-sm text-label-sm"><span class="material-symbols-outlined text-[14px]">devices</span><span class="">Unit Mesin SmartBIN</span></div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">SmartBIN</h3>
+<p class="font-body-sm text-body-sm text-text-muted truncate mt-0.5">Perangkat IoT Smart Station Aktif &amp; Terhubung</p>
+</div>
+</div>
+<!-- Rincian Perhitungan Poin (PRD FR-HIST-03 Formula) -->
+<div class="bg-surface-card rounded-[20px] p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-primary">
+<span class="material-symbols-outlined text-[18px]">calculate</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface font-bold">Kalkulasi Formula Poin</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-text-primary">FR-HIST-03</span>
+</div>
+<!-- Breakdown List -->
+<div class="space-y-2.5 pt-1">
+<div class="flex items-center justify-between text-body-md font-body-md">
+<span class="text-text-muted">Kategori Material</span>
+<span class="text-on-surface font-semibold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+          Plastik PET Anorganik
+        </span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md">
+<span class="text-text-muted">Bobot Terukur (Load Cell)</span>
+<span class="text-on-surface font-bold">1,20 kg</span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md">
+<span class="text-text-muted">Tarif Standar Poin</span>
+<span class="text-on-surface">100 Poin / kg</span>
+</div>
+<!-- Formula Calculation Box -->
+<div class="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-sm text-label-sm text-text-muted">Perhitungan Sistem:</span>
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-text-secondary">1,20 kg × 100 Poin/kg</span>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">= 120 Poin</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Telemetri Sensor & IoT Hardware (Edge Device Insights) -->
+<div class="bg-surface-card rounded-[20px] p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center gap-2 pb-1">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-primary">
+<span class="material-symbols-outlined text-[18px]">memory</span>
+</div>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface font-bold">Validasi Perangkat Keras IoT</h4>
+<p class="font-label-sm text-label-sm text-text-muted">Telemetri sensor edge terverifikasi otomatis</p>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-2 pt-1">
+<!-- Sensor Berat HX711 -->
+<div class="flex items-start justify-between p-2.5 rounded-xl bg-surface-container/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-primary text-[18px]">scale</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Modul Sensor Berat</span>
+<span class="font-body-sm text-body-sm text-text-muted">Load Cell HX711 ADC 24-bit</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-semibold">Akurat (±5g)</span>
+</div>
+<!-- RTC DS3231 -->
+<div class="flex items-start justify-between p-2.5 rounded-xl bg-surface-container/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-primary text-[18px]">timer</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Jam RTC Lokal Mesin</span>
+<span class="font-body-sm text-body-sm text-text-muted">DS3231 Presisi Tinggi</span>
+</div>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">10:15:22 WIB</span>
+</div>
+<!-- Cloud Sync MQTT -->
+<div class="flex items-start justify-between p-2.5 rounded-xl bg-surface-container/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-primary text-[18px]">cloud_sync</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Sinkronisasi MQTT Cloud</span>
+<span class="font-body-sm text-body-sm text-text-muted">Broker Kampus QoS 1</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">10:15:25 WIB</span>
+<span class="font-label-sm text-label-sm text-status-success">Latensi 3 detik</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Identitas Transaksi & Keamanan KTM -->
+<div class="bg-surface-card rounded-[20px] p-space-md shadow-sm flex flex-col gap-3">
+<div class="flex items-center gap-2 pb-1">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-primary">
+<span class="material-symbols-outlined text-[18px]">fingerprint</span>
+</div>
+<span class="font-label-lg text-label-lg text-on-surface font-bold">Identitas &amp; Keamanan</span>
+</div>
+<!-- ID Transaksi with Copy Action -->
+<div class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low">
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-text-muted">ID Transaksi Unik</span>
+<span class="font-label-md text-label-md text-on-surface font-mono truncate" id="tx-id-val">TX-SB-20261024-884129</span>
+</div>
+<button class="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-card shadow-sm text-text-primary hover:bg-surface-container active:scale-95 transition-all" id="btn-copy-tx" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span class="font-label-sm text-label-sm" id="copy-text">Salin</span>
+</button>
+</div>
+<!-- Info KTM Mahasiswa -->
+<div class="flex items-center justify-between py-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted text-[20px]">credit_card</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-text-muted">Identitas Kartu KTM</span>
+<span class="font-label-md text-label-md text-on-surface">KTM Mahasiswa ••••••••456</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container text-text-primary">Hash RFID OK</span>
+</div>
+<!-- Saldo Akhir -->
+<div class="flex items-center justify-between py-1 pt-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted text-[20px]">account_balance_wallet</span>
+<span class="font-body-md text-body-md text-text-muted">Total Saldo Poin Akun</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-text-primary font-bold">1.450 Poin</span>
+</div>
+</div>
+<!-- Eco-Impact Banner (Edukasi Lingkungan) -->
+<div class="relative overflow-hidden bg-primary-container text-on-primary rounded-[20px] p-space-md shadow-sm">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-on-primary-container/20 pointer-events-none blur-sm"></div>
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-card/15 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px] text-secondary-fixed">eco</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm text-primary-fixed uppercase tracking-wider">Dampak Keberlanjutanmu</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm font-bold leading-tight">Mengurangi ~0,35 kg CO₂e</h4>
+<p class="font-body-sm text-body-sm text-on-primary-container leading-relaxed">
+          Setoran botol plastikmu ini setara dengan menghemat konsumsi energi lampu LED penerangan kampus selama 4 jam penuh. Terima kasih pahlawan hijau!
+        </p>
+</div>
+</div>
+</div>
+<!-- Aksi Bawah & Bantuan -->
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<!-- Secondary Action Button -->
+<button class="w-full h-12 rounded-full bg-surface-card shadow-sm text-text-primary font-label-lg text-label-lg flex items-center justify-center gap-2 hover:bg-surface-container-low active:scale-[0.99] transition-all" type="button"><span class="material-symbols-outlined text-[20px]">sensors</span><span class="">Lihat Status Mesin SmartBIN</span></button>
+<!-- Report / Assistance Link -->
+<div class="flex items-center justify-center py-2">
+<button class="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary transition-colors py-1" type="button">
+<span class="material-symbols-outlined text-[18px]">support_agent</span>
+<span class="font-label-md text-label-md">Butuh Bantuan Transaksi Ini? Laporkan Kendala</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Interaktivitas Salin ID Transaksi
+  const btnCopy = document.getElementById('btn-copy-tx');
+  const copyText = document.getElementById('copy-text');
+  const txVal = document.getElementById('tx-id-val');
+
+  if (btnCopy && copyText && txVal) {
+    btnCopy.addEventListener('click', () => {
+      const textToCopy = txVal.textContent.trim();
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(textToCopy).then(showCopiedState);
+      } else {
+        showCopiedState();
+      }
+    });
+  }
+
+  function showCopiedState() {
+    copyText.textContent = 'Tersalin!';
+    btnCopy.classList.add('bg-secondary-container', 'text-on-secondary-container');
+    setTimeout(() => {
+      copyText.textContent = 'Salin';
+      btnCopy.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+    }, 2000);
+  }
+
+  // Interaktivitas Tombol Bagikan
+  const btnShare = document.getElementById('btn-share');
+  if (btnShare) {
+    btnShare.addEventListener('click', () => {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Bukti Setoran SmartBIN',
+          text: 'Saya baru saja mendaur ulang sampah anorganik dan mendapatkan 120 Poin di SmartBIN Perpustakaan Pusat!',
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        alert('Tautan bukti transaksi berhasil disiapkan untuk dibagikan.');
+      }
+    });
+  }
+</script></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-card/95 backdrop-blur-xl shadow-[0_-4px_20px_rgba(27,94,32,0.08)]" data-active-classes="[&amp;&gt;.m3-indicator]:bg-secondary-container [&amp;&gt;.m3-indicator]:scale-100 text-text-primary font-bold"><div class="flex items-center justify-around h-20 px-space-xs"><a class="flex flex-col items-center justify-center flex-1 h-full text-text-muted transition-all group py-1" data-path="beranda" href="#"><div class="m3-indicator flex items-center justify-center w-16 h-8 rounded-full transition-all duration-200"><span class="material-symbols-outlined text-[24px] text-text-primary group-hover:scale-105 transition-transform">home</span></div><span class="font-label-md text-label-md mt-1 transition-colors group-hover:text-text-primary">Beranda</span></a><a class="flex flex-col items-center justify-center flex-1 h-full text-text-primary font-bold transition-all group py-1" data-path="riwayat" href="#"><div class="m3-indicator flex items-center justify-center w-16 h-8 rounded-full bg-secondary-container transition-all duration-200"><span class="material-symbols-outlined text-[24px] text-text-primary group-hover:scale-105 transition-transform" style="font-variation-settings: 'FILL' 1;">receipt_long</span></div><span class="font-label-md text-label-md mt-1 transition-colors">Riwayat</span></a><a class="flex flex-col items-center justify-center flex-1 h-full text-text-muted transition-all group py-1" data-path="tautkan-ktm" href="#"><div class="m3-indicator flex items-center justify-center w-16 h-8 rounded-full transition-all duration-200"><span class="material-symbols-outlined text-[24px] text-text-primary group-hover:scale-105 transition-transform">contactless</span></div><span class="font-label-md text-label-md mt-1 transition-colors group-hover:text-text-primary">Tautkan KTM</span></a><a class="flex flex-col items-center justify-center flex-1 h-full text-text-muted transition-all group py-1" data-path="profil" href="#"><div class="m3-indicator flex items-center justify-center w-16 h-8 rounded-full transition-all duration-200"><span class="material-symbols-outlined text-[24px] text-text-primary group-hover:scale-105 transition-transform">person</span></div><span class="font-label-md text-label-md mt-1 transition-colors group-hover:text-text-primary">Profil</span></a></div></nav>
+
+
+
+</body></html>

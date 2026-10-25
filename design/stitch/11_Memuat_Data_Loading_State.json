@@ -1,0 +1,17 @@
+{
+  "deviceType": "MOBILE",
+  "height": "2432",
+  "htmlCode": {
+    "downloadUrl": "https://stitch.googleapis.com/v1/projects/10725580874696889533/files/43904b6c908a4140a15e9fd7b6c27044:download",
+    "mimeType": "text/html",
+    "name": "projects/10725580874696889533/screens/43904b6c908a4140a15e9fd7b6c27044/fileEntries/html"
+  },
+  "name": "projects/10725580874696889533/screens/43904b6c908a4140a15e9fd7b6c27044",
+  "screenshot": {
+    "downloadUrl": "https://stitch.googleapis.com/v1/projects/10725580874696889533/files/screenshot_00065e94735f264101b4df8b112a49c8:download",
+    "mimeType": "image/png",
+    "name": "projects/10725580874696889533/screens/43904b6c908a4140a15e9fd7b6c27044/fileEntries/screenshot"
+  },
+  "title": "SmartBIN - Memuat Data (Loading State)",
+  "width": "780"
+}

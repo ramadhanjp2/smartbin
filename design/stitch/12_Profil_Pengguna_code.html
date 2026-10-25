@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-container": "#2f5b36", "text-secondary": "#2E4732", "outline-variant": "#c0c9bb", "border-subtle": "#C8E6C9", "text-primary": "#1B5E20", "secondary-fixed-dim": "#83da85", "tertiary": "#174321", "inverse-primary": "#91d78a", "background": "#f0fdf1", "primary-fixed": "#acf4a4", "secondary": "#126d27", "inverse-on-surface": "#e7f4e8", "on-primary-fixed": "#002203", "on-tertiary-fixed": "#002109", "outline": "#717a6d", "surface": "#f0fdf1", "on-primary-container": "#90d689", "on-tertiary-fixed-variant": "#24502c", "on-error": "#ffffff", "on-secondary-fixed": "#002105", "tertiary-fixed": "#bdefbe", "on-surface-variant": "#41493e", "on-tertiary-container": "#a0d1a2", "primary": "#00450d", "surface-variant": "#d9e6da", "status-warning": "#F57C00", "on-secondary-fixed-variant": "#005318", "on-error-container": "#93000a", "on-surface": "#131e17", "on-secondary": "#ffffff", "on-tertiary": "#ffffff", "status-error": "#D32F2F", "on-primary": "#ffffff", "inverse-surface": "#28332b", "surface-dim": "#d0ddd2", "on-secondary-container": "#19722b", "secondary-fixed": "#9ff79f", "on-background": "#131e17", "text-muted": "#527357", "surface-container-highest": "#d9e6da", "surface-card": "#FFFFFF", "surface-container-low": "#eaf7eb", "tertiary-fixed-dim": "#a2d3a4", "error": "#ba1a1a", "surface-container-high": "#dfece0", "surface-tint": "#2a6b2c", "status-success": "#388E3C", "surface-container-lowest": "#ffffff", "surface-bright": "#f0fdf1", "primary-container": "#1b5e20", "on-primary-fixed-variant": "#0c5216", "surface-container": "#e4f1e5", "secondary-container": "#9cf49c", "error-container": "#ffdad6", "primary-fixed-dim": "#91d78a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "space-xs": "0.25rem", "space-md": "1rem", "gutter-mobile": "0.75rem", "space-lg": "1.5rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter": "1rem", "margin": "1.25rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "display-lg": ["Plus Jakarta Sans"], "headline-lg-mobile": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800" }], "headline-lg-mobile": ["26px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "700" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;font-family:'Plus Jakarta Sans',sans-serif;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface flex flex-col min-h-screen antialiased"><header class="fixed top-0 w-full z-50 bg-surface/85 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(27,94,32,0.06)] pt-safe"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[20px]">recycling</span></div><div class="flex flex-col"><span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">SmartBIN Campus</span><h1 class="font-headline-sm text-headline-sm text-on-surface leading-tight">Profil</h1></div></div><div class="flex items-center gap-space-xs"><button aria-label="Notifikasi" class="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container active:scale-95 transition-all"><span class="material-symbols-outlined text-[22px]">notifications</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full gap-space-md">
+<!-- Profile Header Card -->
+<div class="relative overflow-hidden bg-surface-card rounded-xl p-space-md shadow-[0_4px_16px_-2px_rgba(27,94,32,0.06)] flex flex-col items-center text-center">
+<!-- Subtle Eco Deco Pattern -->
+<div class="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-secondary-container/40 pointer-events-none blur-xl"></div>
+<div class="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-primary-fixed/30 pointer-events-none blur-lg"></div>
+<div class="relative mb-space-sm">
+<div class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-secondary to-primary-fixed shadow-md">
+<img class="w-full h-full object-cover rounded-full" data-alt="Close-up portrait of a cheerful Indonesian male university student named Alif wearing a green campus lanyard, natural daylight, soft bokeh campus foliage background, modern and clean photography with warm eco-friendly tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoIf47quVIMdTE7UtQLvPF8eSHNT3IzJFmxUK8xY5owjgpMJHQRfKgAkqVu0Zwjy48ycNpdgCEBE6jG9mFd89G36rsMOUF5pWzOk-UB5BsS2jQGuAOrji6kuQwiYNU-KUXlhma44xIRS1WEbOe1NBai3subINHTXpqDUrS2V3tmPsJYDD6byGcsdGk9zFcrpb0QtSlXMby-R9IGwBp-UPUhkr9RZjdohbejsqQo78n6566u1iFHIrUeg"/>
+</div>
+<button aria-label="Ubah Foto Profil" class="absolute bottom-0 right-0 w-7 h-7 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[15px]">photo_camera</span>
+</button>
+</div>
+<!-- Student Identifiers -->
+<h2 class="font-headline-md text-headline-md text-on-surface">Muhammad Alif Ramadhan</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-label-md text-label-md text-text-muted">NIM: 2106728190</span>
+<span class="text-text-muted text-xs">•</span>
+<span class="font-label-md text-label-md text-text-muted">ramadhan@ui.ac.id</span>
+</div>
+<!-- Level Badge -->
+<div class="mt-space-sm inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container rounded-full text-on-secondary-container">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">eco</span>
+<span class="font-label-sm text-label-sm tracking-wide">Eco Warrior Lv. 2</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.2 bg-surface-card text-primary rounded-full text-[10px]">1.450 Poin</span>
+</div>
+</div>
+<!-- SECTION 1: KTM Status Card (FR-CARD-04) -->
+<div class="bg-gradient-to-br from-primary via-primary-container to-tertiary rounded-xl p-space-md text-on-primary shadow-[0_8px_20px_-3px_rgba(27,94,32,0.18)] relative overflow-hidden">
+<!-- Visual Watermark & Chip Graphic -->
+<div class="absolute -right-6 -bottom-6 w-36 h-36 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[140px]">contactless</span>
+</div>
+<div class="flex items-start justify-between relative z-10 mb-space-md">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="material-symbols-outlined text-[18px] text-secondary-fixed">credit_card</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-primary-fixed">Kartu Tanda Mahasiswa</span>
+</div>
+<p class="font-headline-sm text-headline-sm text-on-primary font-bold">Universitas Indonesia</p>
+</div>
+<!-- Active Pill -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+        KTM Tertaut
+      </span>
+</div>
+<div class="relative z-10 grid grid-cols-2 gap-space-sm pt-2 mb-space-md">
+<div class="bg-white/10 backdrop-blur-sm rounded-lg p-2.5">
+<span class="block font-label-sm text-label-sm text-primary-fixed-dim">RFID Hash (HMAC-SHA256)</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-secondary-fixed">lock</span>
+<span class="font-label-md text-label-md font-mono tracking-widest text-on-primary">****-8A4F</span>
+</div>
+</div>
+<div class="bg-white/10 backdrop-blur-sm rounded-lg p-2.5">
+<span class="block font-label-sm text-label-sm text-primary-fixed-dim">Tanggal Tertaut</span>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px] text-secondary-fixed">event_available</span>
+<span class="font-label-md text-label-md text-on-primary">12 Okt 2026</span>
+</div>
+</div>
+</div>
+<!-- Action Button to Manage KTM -->
+<button class="relative z-10 w-full py-2.5 px-4 bg-white/15 hover:bg-white/25 active:scale-[0.99] text-on-primary rounded-full font-label-md text-label-md flex items-center justify-center gap-2 transition-all" id="btnOpenKTMModal">
+<span class="material-symbols-outlined text-[18px]">phonelink_erase</span>
+      Ganti / Lepas Tautan KTM
+    </button>
+</div>
+<!-- SECTION 2: Eco Points & Rate Information (FR-PROF-02) -->
+<div class="bg-surface-card rounded-xl p-space-md shadow-[0_4px_16px_-2px_rgba(27,94,32,0.06)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">monetization_on</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Poin & Tarif Konversi</h3>
+</div>
+<span class="font-label-sm text-label-sm text-secondary bg-surface-container-low px-2 py-0.5 rounded-full font-bold">FR-PROF-02</span>
+</div>
+<!-- Live Balance Spotlight -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex items-center justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-text-muted uppercase tracking-wider block">Saldo Aktif Mahasiswa</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary">1.450</span>
+<span class="font-label-md text-label-md text-secondary font-bold">Poin SmartBIN</span>
+</div>
+</div>
+<div class="w-11 h-11 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined text-[24px]">savings</span>
+</div>
+</div>
+<!-- Rates Grid -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="bg-surface-bright rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center gap-1.5 text-text-secondary">
+<span class="material-symbols-outlined text-[16px] text-status-warning">takeout_dining</span>
+<span class="font-label-md text-label-md font-semibold">Anorganik</span>
+</div>
+<div class="mt-2">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">100</span>
+<span class="font-body-sm text-body-sm text-text-muted">Poin / kg</span>
+</div>
+</div>
+<div class="bg-surface-bright rounded-lg p-3 flex flex-col justify-between">
+<div class="flex items-center gap-1.5 text-text-secondary">
+<span class="material-symbols-outlined text-[16px] text-status-success">compost</span>
+<span class="font-label-md text-label-md font-semibold">Organik</span>
+</div>
+<div class="mt-2">
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">40</span>
+<span class="font-body-sm text-body-sm text-text-muted">Poin / kg</span>
+</div>
+</div>
+</div>
+<!-- Offline Sorting Guide Action -->
+<button class="w-full mt-1 py-3 px-4 bg-surface-container hover:bg-surface-container-high active:scale-[0.99] rounded-xl flex items-center justify-between text-on-surface transition-all" id="btnOpenGuide">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-primary text-[20px]">menu_book</span>
+<div class="text-left">
+<span class="font-label-md text-label-md font-semibold block text-on-surface">Panduan Pemilahan Sampah</span>
+<span class="font-body-sm text-body-sm text-text-muted block">Tersedia statis & bisa dibaca offline</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px]">chevron_right</span>
+</button>
+</div>
+<!-- SECTION 3: Account & App Settings -->
+<div class="bg-surface-card rounded-xl p-space-md shadow-[0_4px_16px_-2px_rgba(27,94,32,0.06)] flex flex-col">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-space-sm">Pengaturan Akun & Aplikasi</h3>
+<div class="flex flex-col">
+<!-- Edit Profile Name -->
+<button class="w-full py-3 flex items-center justify-between hover:bg-surface-container-low px-2 rounded-lg transition-colors active:scale-[0.99]">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">badge</span>
+</div>
+<div class="text-left">
+<span class="font-label-lg text-label-lg text-on-surface block">Ubah Nama Profil</span>
+<span class="font-body-sm text-body-sm text-text-muted block">Muhammad Alif Ramadhan</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px]">chevron_right</span>
+</button>
+<!-- Change Password (FR-AUTH-05) -->
+<button class="w-full py-3 flex items-center justify-between hover:bg-surface-container-low px-2 rounded-lg transition-colors active:scale-[0.99]">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">lock_reset</span>
+</div>
+<div class="text-left">
+<div class="flex items-center gap-1.5">
+<span class="font-label-lg text-label-lg text-on-surface block">Ganti Kata Sandi</span>
+<span class="font-label-sm text-label-sm text-text-muted bg-surface-variant px-1.5 rounded">FR-AUTH-05</span>
+</div>
+<span class="font-body-sm text-body-sm text-text-muted block">Diperbarui 30 hari yang lalu</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px]">chevron_right</span>
+</button>
+<!-- Theme Preference -->
+<div class="w-full py-3 px-2 flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">palette</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Preferensi Tema</span>
+<span class="font-body-sm text-body-sm text-text-muted block">Tampilan antarmuka sistem</span>
+</div>
+</div>
+</div>
+<!-- Segmented Control for Theme -->
+<div class="grid grid-cols-3 gap-1 bg-surface-container p-1 rounded-xl mt-1">
+<button class="py-1.5 text-center rounded-lg font-label-sm text-label-sm font-semibold bg-surface-card text-primary shadow-sm">
+            Terang
+          </button>
+<button class="py-1.5 text-center rounded-lg font-label-sm text-label-sm font-medium text-text-muted hover:text-on-surface">
+            Gelap
+          </button>
+<button class="py-1.5 text-center rounded-lg font-label-sm text-label-sm font-medium text-text-muted hover:text-on-surface">
+            Sistem
+          </button>
+</div>
+</div>
+<!-- Notifications & Sound Toggle -->
+<div class="w-full py-3 px-2 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Notifikasi & Suara</span>
+<span class="font-body-sm text-body-sm text-text-muted block">Bunyi saat setor botol di SmartBIN</span>
+</div>
+</div>
+<!-- Switch Toggle Active -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-card after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</label>
+</div>
+<!-- Privacy Policy & Terms -->
+<button class="w-full py-3 flex items-center justify-between hover:bg-surface-container-low px-2 rounded-lg transition-colors active:scale-[0.99]">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+<div class="text-left">
+<span class="font-label-lg text-label-lg text-on-surface block">Kebijakan Privasi & Ketentuan</span>
+<span class="font-body-sm text-body-sm text-text-muted block">Standar keamanan data UI & IoT</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-muted text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- SECTION 4: Logout Button (FR-AUTH-04) -->
+<div class="pt-2">
+<button class="w-full h-12 rounded-full bg-error-container/60 hover:bg-error-container text-error active:scale-[0.98] font-label-lg text-label-lg flex items-center justify-center gap-2 transition-all" id="btnLogout">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+      Keluar dari Akun (FR-AUTH-04)
+    </button>
+<p class="text-center font-body-sm text-body-sm text-text-muted mt-2">
+      SmartBIN Campus v2.4.0 • Dikelola oleh Tim Fasilitas UI
+    </p>
+</div>
+<!-- MODAL: Security Confirmation for KTM Unlink (FR-CARD-04) -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm hidden items-center justify-center p-gutter" id="ktmSecurityModal">
+<div class="bg-surface-card w-full max-w-sm rounded-xl p-space-lg shadow-xl flex flex-col gap-space-md animate-in fade-in zoom-in-95 duration-150">
+<div class="w-12 h-12 rounded-full bg-error-container text-error flex items-center justify-center mx-auto">
+<span class="material-symbols-outlined text-[28px]">shield_person</span>
+</div>
+<div class="text-center">
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Konfirmasi Keamanan KTM</h4>
+<p class="font-body-md text-body-md text-text-muted mt-1">
+          Apakah Anda yakin ingin melepas tautan kartu <strong class="text-on-surface">****-8A4F</strong>? Anda tidak akan dapat membuka katup SmartBIN menggunakan kartu fisik sebelum menautkan kembali.
+        </p>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg flex items-center gap-2 text-text-secondary">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span class="font-label-sm text-label-sm">Memerlukan autentikasi PIN / Sandi SSO UI</span>
+</div>
+<div class="flex flex-col gap-2">
+<button class="w-full py-3 rounded-full bg-error text-on-error font-label-md text-label-md active:scale-95 transition-transform" id="btnConfirmUnlink">
+          Ya, Lepas Tautan Kartu
+        </button>
+<button class="w-full py-2.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors" id="btnCloseModal">
+          Batal
+        </button>
+</div>
+</div>
+</div>
+<!-- MODAL: Offline Waste Sorting Guide -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm hidden items-center justify-center p-gutter" id="guideModal">
+<div class="bg-surface-card w-full max-w-sm max-h-[751px] rounded-xl p-space-md shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">eco</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Panduan Pemilahan</h4>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-text-muted hover:text-on-surface" id="btnCloseGuide">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="overflow-y-auto pr-1 flex flex-col gap-3 py-1">
+<div class="p-3 bg-surface-container-low rounded-lg">
+<div class="flex items-center gap-2 text-status-warning font-label-md text-label-md font-bold mb-1">
+<span class="material-symbols-outlined text-[18px]">takeout_dining</span>
+            Anorganik (100 Poin / kg)
+          </div>
+<p class="font-body-sm text-body-sm text-text-muted">
+            Botol PET transparan, gelas plastik bersih, kaleng minuman, kemasan aluminium, dan kotak karton kering. <strong>Pastikan cairan telah dikosongkan.</strong>
+</p>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg">
+<div class="flex items-center gap-2 text-status-success font-label-md text-label-md font-bold mb-1">
+<span class="material-symbols-outlined text-[18px]">compost</span>
+            Organik (40 Poin / kg)
+          </div>
+<p class="font-body-sm text-body-sm text-text-muted">
+            Sisa buah, dedaunan kering, ampas kopi/teh, dan sisa makanan tanpa kemasan plastik. <strong>Hindari memasukkan minyak berlebih.</strong>
+</p>
+</div>
+<div class="p-3 bg-error-container/40 rounded-lg">
+<div class="flex items-center gap-2 text-status-error font-label-md text-label-md font-bold mb-1">
+<span class="material-symbols-outlined text-[18px]">dangerous</span>
+            Dilarang Masuk SmartBIN
+          </div>
+<p class="font-body-sm text-body-sm text-error">
+            Baterai, cairan bahan kimia, jarum suntik/medis, puntung rokok menyala, dan kaca pecah tajam.
+          </p>
+</div>
+</div>
+<div class="pt-3">
+<button class="w-full py-2.5 rounded-full bg-primary text-on-primary font-label-md text-label-md" id="btnGotItGuide">
+          Saya Mengerti
+        </button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Highlight active profile tab
+  (function() {
+    const navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(link => {
+      if (link.getAttribute('data-path') === 'profil') {
+        link.classList.remove('text-on-surface-variant');
+        link.classList.add('text-primary', 'font-bold');
+        const icon = link.querySelector('.material-symbols-outlined');
+        if (icon) icon.style.fontVariationSettings = "'FILL' 1";
+      }
+    });
+
+    // KTM Unlink Modal Handling
+    const openKTMBtn = document.getElementById('btnOpenKTMModal');
+    const closeKTMBtn = document.getElementById('btnCloseModal');
+    const ktmModal = document.getElementById('ktmSecurityModal');
+    const confirmUnlink = document.getElementById('btnConfirmUnlink');
+
+    if (openKTMBtn && ktmModal && closeKTMBtn) {
+      openKTMBtn.addEventListener('click', () => {
+        ktmModal.classList.remove('hidden');
+        ktmModal.classList.add('flex');
+      });
+      closeKTMBtn.addEventListener('click', () => {
+        ktmModal.classList.add('hidden');
+        ktmModal.classList.remove('flex');
+      });
+      confirmUnlink.addEventListener('click', () => {
+        alert('Tautan KTM telah dinonaktifkan. Silakan hubungkan kembali di tab Tautkan KTM.');
+        ktmModal.classList.add('hidden');
+        ktmModal.classList.remove('flex');
+      });
+    }
+
+    // Guide Modal Handling
+    const openGuideBtn = document.getElementById('btnOpenGuide');
+    const closeGuideBtn = document.getElementById('btnCloseGuide');
+    const gotItGuideBtn = document.getElementById('btnGotItGuide');
+    const guideModal = document.getElementById('guideModal');
+
+    if (openGuideBtn && guideModal) {
+      const showGuide = () => {
+        guideModal.classList.remove('hidden');
+        guideModal.classList.add('flex');
+      };
+      const hideGuide = () => {
+        guideModal.classList.add('hidden');
+        guideModal.classList.remove('flex');
+      };
+
+      openGuideBtn.addEventListener('click', showGuide);
+      if (closeGuideBtn) closeGuideBtn.addEventListener('click', hideGuide);
+      if (gotItGuideBtn) gotItGuideBtn.addEventListener('click', hideGuide);
+    }
+
+    // Logout confirmation micro-interaction
+    const logoutBtn = document.getElementById('btnLogout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (confirm('Apakah Anda yakin ingin keluar dari akun SmartBIN Campus?')) {
+          // Simulation of logout
+          console.log('Session FR-AUTH-04 terminated');
+        }
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-card/90 backdrop-blur-xl shadow-[0_-4px_24px_-4px_rgba(27,94,32,0.08)]" data-active-classes="text-primary font-bold"><div class="h-16 px-gutter flex items-center justify-around"><a class="flex flex-col items-center justify-center min-w-[56px] h-12 text-on-surface-variant hover:text-primary transition-colors" data-path="beranda" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm mt-0.5">Beranda</span></a><a class="flex flex-col items-center justify-center min-w-[56px] h-12 text-on-surface-variant hover:text-primary transition-colors" data-path="riwayat" href="#"><span class="material-symbols-outlined text-[24px]">receipt_long</span><span class="font-label-sm text-label-sm mt-0.5">Riwayat</span></a><a class="flex flex-col items-center justify-center min-w-[56px] h-12 text-on-surface-variant hover:text-primary transition-colors" data-path="tautkan-ktm" href="#"><span class="material-symbols-outlined text-[24px]">credit_card</span><span class="font-label-sm text-label-sm mt-0.5">Tautkan KTM</span></a><a aria-current="page" class="flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors text-primary font-bold" data-path="profil" href="#"><span class="material-symbols-outlined text-[24px]">person</span><span class="font-label-sm text-label-sm mt-0.5">Profil</span></a></div></nav></body></html>
