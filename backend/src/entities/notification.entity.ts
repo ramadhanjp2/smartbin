@@ -31,7 +31,7 @@ export class NotificationEntity {
   @Column({ type: "text" })
   body!: string;
 
-  @Column({ name: "reference_id", length: 100, nullable: true })
+  @Column({ name: "reference_id", type: "varchar", length: 100, nullable: true })
   referenceId!: string | null;
 
   @Column({ name: "is_read", type: "boolean", default: false })
