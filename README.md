@@ -1,10 +1,10 @@
-# SmartBIN — Aplikasi Mobile Flutter
+# SmartBIN — Aplikasi Flutter dan Backend
 
 Aplikasi untuk mahasiswa melihat saldo poin dan riwayat setoran sampah dari mesin SmartBIN, menautkan KTM ke akun, dan memantau status mesin. Admin bisa memantau semua mesin dan mengatur nilai poin.
 
 Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, dan ikuti aturannya supaya kode kita tetap seragam dan tidak saling menimpa.
 
-> Status saat ini: **Rilis 1 (MVP), mode mock.** Semua layar sudah jadi dan bisa dicoba, tetapi datanya masih data palsu di memori. Backend, NFC asli, dan push notification belum tersambung. Lihat [Status pekerjaan](#status-pekerjaan).
+> Status saat ini: aplikasi Flutter masih menggunakan data mock. Backend NestJS + MySQL sudah tersedia sebagai MVP terpisah; aplikasi belum dialihkan ke API nyata. NFC perangkat, MQTT broker, dan pengiriman push FCM masih memerlukan integrasi/konfigurasi. Lihat [Status pekerjaan](#status-pekerjaan).
 
 ---
 
@@ -22,7 +22,8 @@ Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, 
 10. [Pengujian](#pengujian)
 11. [Alur kerja tim](#alur-kerja-tim)
 12. [Status pekerjaan](#status-pekerjaan)
-13. [Masalah umum](#masalah-umum)
+13. [Backend NestJS + MySQL](#backend-nestjs--mysql)
+14. [Masalah umum](#masalah-umum)
 
 ---
 
@@ -414,10 +415,10 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Dashboard admin (S16) | ✅ Selesai (mock) | Ubah nilai poin, reset status Gangguan, log telemetri |
 | Tema terang / gelap / sistem | ✅ Selesai | Tersimpan di perangkat |
 | Login, registrasi, validasi form | ✅ Selesai (mock) | Termasuk kunci 5× gagal |
-| Backend REST (`/api/v1`) | ⏳ Belum | Buat `ApiSmartbinRepository`, perlu OpenAPI dari tim backend |
+| Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | Auth, KTM, saldo/riwayat, mesin, notifikasi, admin, ingest; Flutter belum terhubung |
 | Token di secure storage + refresh token | ⏳ Belum | `flutter_secure_storage` (FR-AUTH-02/03) |
 | NFC asli | ⏳ Belum | `flutter_nfc_kit` di `NfcReader` (FR-CARD-01) |
-| Push notification | ⏳ Belum | `firebase_messaging` (FR-NOTIF-01/02) |
+| Push notification | ⏳ Belum | FCM belum dikonfigurasi pada backend dan aplikasi (`firebase_messaging`) |
 | Cache offline 50 riwayat | ⏳ Belum | `drift` atau `hive` (FR-HIST-04) |
 | Banner offline otomatis | ⏳ Belum | `connectivity_plus` |
 | Flavor `mock` / `dev` / `prod` | ⏳ Belum | |
@@ -425,6 +426,158 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Detail mesin & petunjuk arah (S09) | 🔜 Rilis 2 | |
 
 Perbarui tabel ini setiap kali menyelesaikan atau mulai mengerjakan sesuatu, supaya semua orang tahu siapa mengerjakan apa.
+
+---
+
+## Backend NestJS + MySQL
+
+Backend berada di [`backend/`](backend/), menggunakan NestJS, TypeORM, dan MySQL 8.4. API memakai prefix `/api/v1`; endpoint kesehatan tersedia di `GET /api/v1/health`. Versi ini menyediakan autentikasi JWT + rotasi refresh token, profil, tautkan/lepas KTM, saldo/riwayat, nilai poin, daftar mesin, notifikasi, administrasi nilai poin/reset mesin, serta endpoint aman untuk ingest setoran dan status mesin.
+
+### Menjalankan lokal (Windows PowerShell)
+
+Prasyarat: Node.js 20+, npm, dan Docker Desktop.
+
+```powershell
+cd backend
+Copy-Item .env.example .env
+docker compose up -d
+npm install
+npm run start:dev
+```
+
+Edit `backend/.env` sebelum menjalankan aplikasi. Ganti `JWT_ACCESS_SECRET`, `CARD_HMAC_SECRET`, dan `MACHINE_API_KEY` dengan nilai acak yang berbeda; jangan commit `.env`. Database `smartbin` mesti tersedia sebelum NestJS mulai. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; gunakan skema/migrasi yang telah ditinjau. Seed nilai poin awal dan satu mesin demo:
+
+```powershell
+Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -psmartbin smartbin
+```
+
+Untuk memberi akun admin, daftar lebih dulu lewat API, lalu ubah role akun yang memang berwenang melalui MySQL:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'admin@kampus.ac.id';
+```
+
+Endpoint ingest mesin memakai header `X-Machine-Api-Key` yang cocok dengan `MACHINE_API_KEY`; endpoint tidak boleh dipanggil dari aplikasi mobile. Nilai `uid` hanya diproses untuk HMAC dan tidak disimpan mentah. Integrasi perangkat harus mengirim transaksi setoran unik (`transactionId`) ke API; backend menolak transaksi duplikat dan menghitung poin dari nilai saat ini.
+
+Validasi backend: jalankan `npm run build` dan `npm test` dari folder `backend`. Error API dinormalisasi menjadi `{ "code": "...", "message": "..." }` (error validasi juga menyertakan `details`).
+
+### Endpoint yang tersedia
+
+Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mesin mensyaratkan token akses JWT pada header HTTP `Authorization`. Endpoint admin juga memeriksa role di server.
+
+| Metode | Path | Akses |
+| --- | --- | --- |
+| GET | `/api/v1/health` | Publik |
+| POST | `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/refresh` | Publik |
+| POST | `/api/v1/auth/logout` | Pengguna |
+| GET, PATCH | `/api/v1/me` | Pengguna |
+| POST, DELETE | `/api/v1/cards/link`, `/api/v1/cards/me` | Pengguna |
+| GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
+| POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
+| PUT, POST | `/api/v1/admin/rates`, `/api/v1/machines/:id/reset` | Admin |
+| POST | `/api/v1/machines/:id/deposits`, `/api/v1/machines/:id/status` | Mesin (`X-Machine-Api-Key`) |
+
+Contoh registrasi:
+
+```json
+{
+  "nim": "2106728190",
+  "name": "Nama Mahasiswa",
+  "email": "mahasiswa@kampus.ac.id",
+  "password": "kata-sandi-minimal-8"
+}
+```
+
+### ERD
+
+Sumber Mermaid tersedia di [`backend/docs/erd.mmd`](backend/docs/erd.mmd).
+
+```mermaid
+erDiagram
+    USERS ||--o| CARDS : links
+    USERS ||--o{ DEPOSITS : owns
+    MACHINES ||--o{ DEPOSITS : receives
+    USERS ||--o{ POINT_LEDGER : earns_or_spends
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ REFRESH_SESSIONS : authenticates
+    USERS {
+        varchar id PK
+        varchar nim UK
+        varchar email UK
+        varchar name
+        varchar password_hash
+        enum role
+    }
+    CARDS {
+        varchar user_id PK, FK
+        varchar uid_hash UK
+        datetime linked_at
+    }
+    MACHINES {
+        varchar id PK
+        varchar code UK
+        varchar name
+        varchar location
+        enum status
+        tinyint organic_fill
+        tinyint inorganic_fill
+        datetime last_seen
+    }
+    DEPOSITS {
+        varchar id PK
+        varchar transaction_id UK
+        varchar machine_id FK
+        varchar user_id FK
+        varchar uid_hash
+        enum type
+        int weight_g
+        int points
+        int rate_per_kg
+        datetime device_time
+        datetime received_at
+        enum status
+    }
+    POINT_LEDGER {
+        varchar id PK
+        varchar user_id FK
+        int delta
+        enum reason
+        varchar reference_id UK
+        datetime created_at
+    }
+    RATES {
+        tinyint id PK
+        int organik_per_kg
+        int anorganik_per_kg
+        datetime updated_at
+    }
+    NOTIFICATIONS {
+        varchar id PK
+        varchar user_id FK
+        varchar kind
+        varchar title
+        text body
+        boolean is_read
+        datetime created_at
+    }
+    REFRESH_SESSIONS {
+        varchar id PK
+        varchar user_id FK
+        varchar token_hash UK
+        datetime expires_at
+        datetime revoked_at
+    }
+```
+
+`point_ledger` menyimpan perubahan saldo sebagai audit trail; saldo dihitung dari jumlah `delta`. Setoran yang datang sebelum KTM tertaut disimpan `HELD`, lalu dikreditkan dan ditulis ke ledger dalam transaksi saat KTM tersebut ditautkan. Nilai poin dan rate yang dipakai saat transaksi ikut disimpan agar riwayat tidak berubah saat rate diperbarui.
+
+### Batas MVP backend
+
+- Proses berjalan sebagai HTTP REST; broker MQTT belum dikonfigurasi. Mesin atau bridge MQTT perlu meneruskan data ke endpoint mesin.
+- Pengiriman push FCM dan pendaftaran token perangkat belum diaktifkan; backend hanya menyimpan dan menyajikan notifikasi aplikasi.
+- Endpoint pairing mesin, reward, penghapusan akun, dan detail telemetry belum termasuk implementasi.
+- Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.
+- Lockout login disimpan di memori proses dan kunci mesin saat ini satu nilai bersama; gunakan penyimpanan pembatasan terdistribusi dan kunci per mesin sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
 
 ---
 
