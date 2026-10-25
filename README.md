@@ -362,7 +362,7 @@ Aturan: **jangan push kode yang membuat test gagal.** Kalau test perlu diubah ka
 
 ## Alur kerja tim
 
-> Folder ini belum menjadi repository git. Jalankan `git init` sekali, lalu push ke GitHub/GitLab bersama sebelum mulai bekerja paralel.
+> Repository: https://github.com/ramadhanjp2/smartbin — clone dengan `git clone https://github.com/ramadhanjp2/smartbin.git`, lalu ikuti [Langkah pertama setelah clone](#langkah-pertama-setelah-clone).
 
 ### Pembagian kerja
 
