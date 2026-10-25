@@ -1,0 +1,80 @@
+erDiagram
+    USERS ||--o| CARDS : links
+    USERS ||--o{ DEPOSITS : owns
+    MACHINES ||--o{ DEPOSITS : receives
+    USERS ||--o{ POINT_LEDGER : earns_or_spends
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ REFRESH_SESSIONS : authenticates
+    RATES {
+        tinyint id PK
+        int organik_per_kg
+        int anorganik_per_kg
+        datetime updated_at
+    }
+    USERS {
+        varchar id PK
+        varchar nim UK
+        varchar email UK
+        varchar name
+        varchar password_hash
+        enum role
+        datetime created_at
+        datetime updated_at
+    }
+    CARDS {
+        varchar user_id PK, FK
+        varchar uid_hash UK
+        datetime linked_at
+    }
+    MACHINES {
+        varchar id PK
+        varchar code UK
+        varchar name
+        varchar campus
+        varchar location
+        enum status
+        tinyint organic_fill
+        tinyint inorganic_fill
+        datetime last_seen
+    }
+    DEPOSITS {
+        varchar id PK
+        varchar transaction_id UK
+        varchar machine_id FK
+        varchar user_id FK
+        varchar uid_hash
+        enum type
+        varchar item_label
+        int weight_g
+        int points
+        int rate_per_kg
+        datetime device_time
+        datetime received_at
+        enum status
+    }
+    POINT_LEDGER {
+        varchar id PK
+        varchar user_id FK
+        int delta
+        enum reason
+        varchar reference_id UK
+        datetime created_at
+    }
+    NOTIFICATIONS {
+        varchar id PK
+        varchar user_id FK
+        varchar kind
+        varchar title
+        text body
+        varchar reference_id
+        boolean is_read
+        datetime created_at
+    }
+    REFRESH_SESSIONS {
+        varchar id PK
+        varchar user_id FK
+        varchar token_hash UK
+        datetime expires_at
+        datetime revoked_at
+        datetime created_at
+    }
