@@ -130,7 +130,7 @@ Data berasal dari [lib/data/mock_smartbin_repository.dart](lib/data/mock_smartbi
 | Peran | Login | Kata sandi | Kondisi awal |
 | --- | --- | --- | --- |
 | Mahasiswa | `2106728190` atau `ramadhan@student.polije.ac.id` | `smartbin123` | KTM belum tertaut, saldo 1.450, ada 120 poin tertahan dari 2 setoran |
-| Admin | `admin@ui.ac.id` (pilih tab **Admin / Teknisi**) | `admin1234` | 4 mesin: Siap, Penuh, Gangguan, Offline |
+| Admin | `admin@smartbin.id` (pilih tab **Admin / Teknisi**) | `admin1234` | 4 mesin: Siap, Penuh, Gangguan, Offline |
 
 Skenario yang bisa dicoba:
 

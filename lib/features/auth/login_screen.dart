@@ -102,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.username],
                         decoration: InputDecoration(
-                          hintText: _admin ? 'admin@ui.ac.id' : 'Contoh: E32253079 atau nama@student.polije.ac.id',
+                          hintText: _admin ? 'admin@smartbin.id' : 'Masukkan NIM atau email kampus',
                           prefixIcon: const Icon(Icons.badge_outlined),
                           fillColor: p.cardMuted,
                         ),
@@ -238,7 +238,7 @@ class _DemoHint extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              admin ? 'Mode demo · admin@ui.ac.id / admin1234' : 'Mode demo · 2106728190 / smartbin123',
+              admin ? 'Mode demo · admin@smartbin.id / admin1234' : 'Mode demo · 2106728190 / smartbin123',
               style: context.text.bodySmall?.copyWith(color: p.textMuted),
             ),
           ),

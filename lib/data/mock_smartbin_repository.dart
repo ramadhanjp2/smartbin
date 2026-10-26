@@ -8,7 +8,7 @@ import 'smartbin_repository.dart';
 ///
 /// Akun demo:
 /// - Mahasiswa: NIM `2106728190` atau `ramadhan@student.polije.ac.id`, sandi `smartbin123`
-/// - Admin: `admin@ui.ac.id`, sandi `admin1234`
+/// - Admin: `admin@smartbin.id`, sandi `admin1234`
 class MockSmartbinRepository implements SmartbinRepository {
   MockSmartbinRepository({this.latency = const Duration(milliseconds: 700)}) {
     _seed();
@@ -57,7 +57,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         id: 'a-1',
         nim: 'ADM-001',
         name: 'Dimas Pratama',
-        email: 'admin@ui.ac.id',
+        email: 'admin@smartbin.id',
         role: UserRole.admin,
         faculty: 'Pengelola Mesin · Fasilitas UI',
       ),

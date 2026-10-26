@@ -173,7 +173,7 @@ void main() {
     await _start(tester, size: const Size(390, 2600));
     await tester.tap(find.text('Admin / Teknisi'));
     await _settle(tester, frames: 3);
-    await _login(tester, 'admin@ui.ac.id', 'admin1234');
+    await _login(tester, 'admin@smartbin.id', 'admin1234');
     expect(find.text('Dashboard Mesin'), findsOneWidget);
     expect(find.text('Konfigurasi Nilai Poin'), findsOneWidget);
     await _shot('12_admin');
