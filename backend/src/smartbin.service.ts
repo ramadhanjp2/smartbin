@@ -61,8 +61,10 @@ export class SmartbinService {
   ) {}
 
   async register(dto: RegisterDto): Promise<unknown> {
+    const nim = dto.nim.trim().toUpperCase();
+    const email = dto.email.trim().toLowerCase();
     const exists = await this.users.findOne({
-      where: [{ nim: dto.nim }, { email: dto.email.toLowerCase() }],
+      where: [{ nim }, { email }],
     });
     if (exists)
       throw new ConflictException({
@@ -70,8 +72,8 @@ export class SmartbinService {
         message: "NIM atau email sudah terdaftar.",
       });
     const user = this.users.create({
-      nim: dto.nim,
-      email: dto.email.toLowerCase(),
+      nim,
+      email,
       name: dto.name.trim(),
       passwordHash: await bcrypt.hash(dto.password, 12),
       role: "user",
@@ -81,7 +83,10 @@ export class SmartbinService {
   }
 
   async login(dto: LoginDto): Promise<unknown> {
-    const identifier = dto.identifier.toLowerCase().trim();
+    const rawIdentifier = dto.identifier.trim();
+    const identifier = rawIdentifier.includes("@")
+      ? rawIdentifier.toLowerCase()
+      : rawIdentifier.toUpperCase();
     const storedAttempt = this.failures.get(identifier);
     if (storedAttempt && storedAttempt.until > Date.now()) {
       throw new UnauthorizedException({

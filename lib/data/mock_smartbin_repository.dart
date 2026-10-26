@@ -7,7 +7,7 @@ import 'smartbin_repository.dart';
 /// supaya pengembangan Flutter tidak menunggu backend dan mesin.
 ///
 /// Akun demo:
-/// - Mahasiswa: NIM `2106728190` atau `ramadhan@ui.ac.id`, sandi `smartbin123`
+/// - Mahasiswa: NIM `2106728190` atau `ramadhan@student.polije.ac.id`, sandi `smartbin123`
 /// - Admin: `admin@ui.ac.id`, sandi `admin1234`
 class MockSmartbinRepository implements SmartbinRepository {
   MockSmartbinRepository({this.latency = const Duration(milliseconds: 700)}) {
@@ -46,7 +46,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         id: 'u-1',
         nim: '2106728190',
         name: 'Muhammad Alif Ramadhan',
-        email: 'ramadhan@ui.ac.id',
+        email: 'ramadhan@student.polije.ac.id',
         role: UserRole.user,
         faculty: 'Mahasiswa Teknik Komputer · UI',
       ),
@@ -266,14 +266,22 @@ class MockSmartbinRepository implements SmartbinRepository {
   @override
   Future<AppUser> register({required String nim, required String name, required String email, required String password}) async {
     await _delay();
-    if (_accounts.containsKey(nim)) {
+    final normalizedNim = nim.trim().toUpperCase();
+    final normalizedEmail = email.trim().toLowerCase();
+    if (!RegExp(r'^[A-Za-z0-9]{8,15}$').hasMatch(normalizedNim)) {
+      throw const AppException('NIM berupa 8–15 huruf atau angka.', field: 'nim');
+    }
+    if (!RegExp(r'^[\w.+-]+@student\.polije\.ac\.id$').hasMatch(normalizedEmail)) {
+      throw const AppException('Gunakan email kampus @student.polije.ac.id.', field: 'email');
+    }
+    if (_accounts.values.any((a) => a.user.nim.toUpperCase() == normalizedNim)) {
       throw const AppException('NIM sudah terdaftar. Silakan masuk dengan akun tersebut.', field: 'nim');
     }
-    if (_accounts.values.any((a) => a.user.email.toLowerCase() == email.toLowerCase())) {
+    if (_accounts.values.any((a) => a.user.email.toLowerCase() == normalizedEmail)) {
       throw const AppException('Email kampus sudah dipakai akun lain.', field: 'email');
     }
-    final user = AppUser(id: 'u-${_accounts.length + 1}', nim: nim, name: name, email: email, role: UserRole.user);
-    _accounts[nim] = (user: user, password: password);
+    final user = AppUser(id: 'u-${_accounts.length + 1}', nim: normalizedNim, name: name, email: normalizedEmail, role: UserRole.user);
+    _accounts[normalizedNim] = (user: user, password: password);
     // Akun baru: saldo kosong, tetapi mesin mungkin sudah mencatat setoran dari KTM ini (tertahan).
     _balance = 0;
     _deposits = _deposits.where((d) => d.isHeld).toList();

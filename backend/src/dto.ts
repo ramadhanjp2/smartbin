@@ -6,6 +6,7 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -14,8 +15,7 @@ import {
 
 export class RegisterDto {
   @IsString()
-  @MinLength(3)
-  @MaxLength(32)
+  @Matches(/^[A-Za-z0-9]{8,15}$/)
   nim!: string;
 
   @IsString()
@@ -25,6 +25,7 @@ export class RegisterDto {
 
   @IsEmail()
   @MaxLength(254)
+  @Matches(/^[^@\s]+@student\.polije\.ac\.id$/i)
   email!: string;
 
   @IsString()

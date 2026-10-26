@@ -129,7 +129,7 @@ Data berasal dari [lib/data/mock_smartbin_repository.dart](lib/data/mock_smartbi
 
 | Peran | Login | Kata sandi | Kondisi awal |
 | --- | --- | --- | --- |
-| Mahasiswa | `2106728190` atau `ramadhan@ui.ac.id` | `smartbin123` | KTM belum tertaut, saldo 1.450, ada 120 poin tertahan dari 2 setoran |
+| Mahasiswa | `2106728190` atau `ramadhan@student.polije.ac.id` | `smartbin123` | KTM belum tertaut, saldo 1.450, ada 120 poin tertahan dari 2 setoran |
 | Admin | `admin@ui.ac.id` (pilih tab **Admin / Teknisi**) | `admin1234` | 4 mesin: Siap, Penuh, Gangguan, Offline |
 
 Skenario yang bisa dicoba:
@@ -481,12 +481,14 @@ Contoh registrasi:
 
 ```json
 {
-  "nim": "2106728190",
+    "nim": "E32253079",
   "name": "Nama Mahasiswa",
-  "email": "mahasiswa@kampus.ac.id",
+    "email": "mahasiswa@student.polije.ac.id",
   "password": "kata-sandi-minimal-8"
 }
 ```
+
+NIM registrasi menerima 8–15 karakter alfanumerik dan dinormalisasi menjadi huruf kapital. Email registrasi wajib menggunakan domain `@student.polije.ac.id`.
 
 ### ERD
 

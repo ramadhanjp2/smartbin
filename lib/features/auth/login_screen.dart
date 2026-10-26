@@ -102,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.username],
                         decoration: InputDecoration(
-                          hintText: _admin ? 'admin@ui.ac.id' : 'Contoh: 2106728190 atau nama@ui.ac.id',
+                          hintText: _admin ? 'admin@ui.ac.id' : 'Contoh: E32253079 atau nama@student.polije.ac.id',
                           prefixIcon: const Icon(Icons.badge_outlined),
                           fillColor: p.cardMuted,
                         ),

@@ -154,9 +154,9 @@ void main() {
     expect(find.text('Anda harus menyetujui kebijakan privasi'), findsOneWidget);
 
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '2201234567');
+    await tester.enterText(fields.at(0), 'E32253079');
     await tester.enterText(fields.at(1), 'Rina Lestari');
-    await tester.enterText(fields.at(2), 'rina@ui.ac.id');
+    await tester.enterText(fields.at(2), 'rina@student.polije.ac.id');
     await tester.enterText(fields.at(3), 'hijau2026');
     await tester.enterText(fields.at(4), 'hijau2026');
     await tester.tap(find.byType(Checkbox));

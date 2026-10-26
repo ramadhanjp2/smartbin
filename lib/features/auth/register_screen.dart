@@ -111,18 +111,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               const FieldLabel('Nomor Induk Mahasiswa (NIM)'),
               TextFormField(
                 controller: _nim,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text,
+                textCapitalization: TextCapitalization.characters,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  hintText: 'Contoh: 2106728190',
+                  hintText: 'Contoh: E32253079',
                   prefixIcon: Icon(Icons.badge_outlined),
-                  helperText: 'Wajib unik & sesuai kartu identitas kampus aktif',
+                  helperText: '8–15 huruf atau angka, wajib unik dan sesuai kartu identitas kampus aktif',
                 ),
                 validator: (v) {
                   if (_serverErrors['nim'] != null) return _serverErrors['nim'];
                   final s = v?.trim() ?? '';
                   if (s.isEmpty) return 'NIM wajib diisi';
-                  if (!RegExp(r'^\d{8,15}$').hasMatch(s)) return 'NIM berupa 8–15 digit angka';
+                  if (!RegExp(r'^[A-Za-z0-9]{8,15}$').hasMatch(s)) return 'NIM berupa 8–15 huruf atau angka';
                   return null;
                 },
               ),
@@ -137,21 +138,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 validator: (v) => (v?.trim().length ?? 0) < 3 ? 'Nama minimal 3 karakter' : null,
               ),
               const SizedBox(height: 18),
-              const FieldLabel('Email Kampus (.ac.id)'),
+              const FieldLabel('Email Kampus'),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
                 decoration: const InputDecoration(
-                  hintText: 'nama@ui.ac.id',
+                  hintText: 'nama@student.polije.ac.id',
                   prefixIcon: Icon(Icons.school_outlined),
-                  helperText: 'Gunakan domain institusi (.ac.id) resmi Anda',
+                  helperText: 'Gunakan email kampus @student.polije.ac.id',
                 ),
                 validator: (v) {
                   if (_serverErrors['email'] != null) return _serverErrors['email'];
                   final s = v?.trim() ?? '';
-                  if (!RegExp(r'^[\w.+-]+@[\w-]+(\.[\w-]+)*\.ac\.id$').hasMatch(s)) return 'Masukkan email kampus berakhiran .ac.id';
+                  if (!RegExp(r'^[\w.+-]+@student\.polije\.ac\.id$', caseSensitive: false).hasMatch(s)) {
+                    return 'Gunakan email kampus @student.polije.ac.id';
+                  }
                   return null;
                 },
               ),
