@@ -4,7 +4,7 @@ Aplikasi untuk mahasiswa melihat saldo poin dan riwayat setoran sampah dari mesi
 
 Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, dan ikuti aturannya supaya kode kita tetap seragam dan tidak saling menimpa.
 
-> Status saat ini: aplikasi Flutter masih menggunakan data mock. Backend NestJS + MySQL sudah tersedia sebagai MVP terpisah; aplikasi belum dialihkan ke API nyata. NFC perangkat, MQTT broker, dan pengiriman push FCM masih memerlukan integrasi/konfigurasi. Lihat [Status pekerjaan](#status-pekerjaan).
+> Status saat ini: Flutter memakai API publik sebagai default (`https://api-smartbin.ramadhanjp.my.id/api/v1`). URL bisa diganti ke backend lokal lewat `--dart-define`; mock tetap tersedia untuk demo. NFC asli, telemetri, dan push FCM masih perlu integrasi tersendiri. Lihat [Status pekerjaan](#status-pekerjaan).
 
 ---
 
@@ -114,8 +114,10 @@ flutter test         # semua harus lulus
 
 | Target | Perintah | Catatan |
 | --- | --- | --- |
-| HP Android | `flutter run` | Aktifkan USB debugging di HP. Cek dengan `flutter devices`. |
-| Chrome | `flutter run -d chrome` | Paling cepat untuk cek tampilan. Tekan F12 → ikon HP untuk ukuran ponsel. |
+| HP Android | `flutter run` | Memakai API publik default. Aktifkan USB debugging di HP. |
+| Chrome | `flutter run -d chrome` | Memakai API publik default. Tekan F12 → ikon HP untuk ukuran ponsel. |
+
+Pilih API lokal dengan `--dart-define=API_BASE_URL=...`, atau jalankan mode mock dengan `--dart-define=SMARTBIN_USE_MOCK=true`. Panduan alamat lokal ada di [Menyambungkan aplikasi ke API](#menyambungkan-aplikasi-ke-api).
 
 Saat aplikasi berjalan: tekan `r` untuk hot reload, `R` untuk hot restart, dan `q` untuk keluar.
 
@@ -125,7 +127,7 @@ Fitur yang memakai hardware (NFC) hanya disimulasikan, jadi semua alur bisa dico
 
 ## Akun demo
 
-Data berasal dari [lib/data/mock_smartbin_repository.dart](lib/data/mock_smartbin_repository.dart) dan kembali ke awal setiap kali aplikasi di-restart.
+Mode mock memakai data dari [lib/data/mock_smartbin_repository.dart](lib/data/mock_smartbin_repository.dart) dan kembali ke awal setiap kali aplikasi di-restart. Aktifkan dengan `--dart-define=SMARTBIN_USE_MOCK=true`. Mode default memakai API publik sehingga akun demo mock di tabel ini tidak berlaku di server.
 
 | Peran | Login | Kata sandi | Kondisi awal |
 | --- | --- | --- | --- |
@@ -336,13 +338,38 @@ Contoh: menambah layar **Katalog Reward (S13)**.
 
 ### Menyambungkan ke backend sungguhan
 
-Cukup buat `ApiSmartbinRepository implements SmartbinRepository` (misalnya memakai `dio`), lalu ganti satu baris di `state/providers.dart`:
+Integrasi API kini tersedia melalui `ApiSmartbinRepository`; lihat [Menyambungkan aplikasi ke API](#menyambungkan-aplikasi-ke-api) untuk memilih base URL. Layar tidak perlu diubah saat base URL diganti. Hal yang sama berlaku untuk NFC: buat implementasi `NfcReader` dengan `flutter_nfc_kit`, lalu ganti `nfcReaderProvider`.
 
-```dart
-final repositoryProvider = Provider<SmartbinRepository>((ref) => ApiSmartbinRepository(baseUrl: ...));
+### Menyambungkan aplikasi ke API
+
+Repository API otomatis menjadi default. Base URL publik bawaan adalah `https://api-smartbin.ramadhanjp.my.id/api/v1`. Ganti hanya nilai `API_BASE_URL` ketika menjalankan atau membangun aplikasi—jangan tambahkan `/` di akhir:
+
+```powershell
+# API publik (default; nilai eksplisit juga didukung)
+flutter run --dart-define=API_BASE_URL=https://api-smartbin.ramadhanjp.my.id/api/v1
+
+# Android Emulator: port 3000 diarahkan ke komputer host melalui 10.0.2.2
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+
+# HP fisik: ganti alamat IP dengan IP LAN komputer yang menjalankan backend
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:3000/api/v1
+
+# Browser di komputer yang menjalankan backend
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000/api/v1
+
+# Demo UI dengan data mock
+flutter run --dart-define=SMARTBIN_USE_MOCK=true
 ```
 
-Layar tidak perlu diubah. Hal yang sama berlaku untuk NFC: buat implementasi `NfcReader` dengan `flutter_nfc_kit`, lalu ganti `nfcReaderProvider`.
+Build APK dengan pilihan URL yang sama:
+
+```powershell
+flutter build apk --dart-define=API_BASE_URL=https://api-smartbin.ramadhanjp.my.id/api/v1
+```
+
+Token akses dan refresh disimpan menggunakan `flutter_secure_storage`, lalu sesi dicoba dipulihkan saat aplikasi dibuka kembali. Android release hanya mengizinkan koneksi HTTPS; HTTP cleartext untuk alamat lokal diaktifkan **khusus manifest debug**, bukan APK release. Untuk HP fisik, pastikan backend mendengarkan di `0.0.0.0`, firewall membuka port API, dan HP berada pada jaringan yang dapat menjangkau komputer. Chrome juga memerlukan konfigurasi CORS backend yang mengizinkan origin aplikasi.
+
+API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. NFC masih memakai pembaca mock, sehingga jangan gunakan fitur tautkan KTM untuk data produksi sampai pembaca NFC asli terpasang. Endpoint telemetri detail dan push FCM juga belum tersedia di MVP backend.
 
 ---
 
@@ -414,9 +441,9 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Semua layar Rilis 1 (S01–S08, S10–S12) | ✅ Selesai (mock) | Sesuai desain Stitch |
 | Dashboard admin (S16) | ✅ Selesai (mock) | Ubah nilai poin, reset status Gangguan, log telemetri |
 | Tema terang / gelap / sistem | ✅ Selesai | Tersimpan di perangkat |
-| Login, registrasi, validasi form | ✅ Selesai (mock) | Termasuk kunci 5× gagal |
-| Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | Auth, KTM, saldo/riwayat, mesin, notifikasi, admin, ingest; Flutter belum terhubung |
-| Token di secure storage + refresh token | ⏳ Belum | `flutter_secure_storage` (FR-AUTH-02/03) |
+| Login, registrasi, validasi form | ✅ Terhubung API | Mode mock tersedia melalui `SMARTBIN_USE_MOCK=true` |
+| Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | API publik default; URL lokal dapat dipilih via `API_BASE_URL` |
+| Token di secure storage + refresh token | ✅ Selesai | `flutter_secure_storage`; sesi dipulihkan saat aplikasi dibuka |
 | NFC asli | ⏳ Belum | `flutter_nfc_kit` di `NfcReader` (FR-CARD-01) |
 | Push notification | ⏳ Belum | FCM belum dikonfigurasi pada backend dan aplikasi (`firebase_messaging`) |
 | Cache offline 50 riwayat | ⏳ Belum | `drift` atau `hive` (FR-HIST-04) |

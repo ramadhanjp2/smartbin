@@ -4,6 +4,7 @@ import 'models.dart';
 /// implementasi REST (`/api/v1`) cukup mengganti [MockSmartbinRepository].
 abstract class SmartbinRepository {
   // Akun
+  Future<AppUser?> restoreSession();
   Future<AppUser> login({required String identifier, required String password, required bool asAdmin});
   Future<AppUser> register({required String nim, required String name, required String email, required String password});
   Future<void> logout();
