@@ -34,7 +34,7 @@ class DepositTile extends StatelessWidget {
     final held = d.isHeld;
     final pointColor = held ? p.warning : p.textPrimary;
     final statusPill = held
-        ? const StatusPill(label: 'Menunggu Tautan KTM', tone: PillTone.warning, icon: Icons.schedule)
+        ? const StatusPill(label: 'Menunggu Tautan KTP', tone: PillTone.warning, icon: Icons.schedule)
         : const StatusPill(label: 'Terkreditasi', icon: Icons.check_circle);
 
     return Semantics(

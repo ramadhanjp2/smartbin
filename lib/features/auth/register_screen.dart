@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,7 +9,7 @@ import '../../data/models.dart';
 import '../../state/providers.dart';
 import 'auth_widgets.dart';
 
-/// S03 – Registrasi mahasiswa.
+/// S03 – Registrasi pengguna publik.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -18,7 +19,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _form = GlobalKey<FormState>();
-  final _nim = TextEditingController();
+  final _nik = TextEditingController();
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pw = TextEditingController();
@@ -38,7 +39,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nim, _name, _email, _pw, _pw2]) {
+    for (final c in [_nik, _name, _email, _pw, _pw2]) {
       c.dispose();
     }
     super.dispose();
@@ -65,7 +66,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     try {
-      await ref.read(authProvider.notifier).register(nim: _nim.text.trim(), name: _name.text.trim(), email: _email.text.trim(), password: _pw.text);
+      await ref.read(authProvider.notifier).register(nik: _nik.text.trim(), name: _name.text.trim(), email: _email.text.trim(), password: _pw.text);
     } on AppException catch (e) {
       setState(() {
         if (e.field != null) {
@@ -101,29 +102,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               const AuthHero(
                 icon: Icons.eco_outlined,
                 title: 'Daftar Akun Baru',
-                subtitle: 'Kumpulkan poin lingkungan dari setoran sampah pintar SmartBIN di sekeliling kampusmu.',
+                subtitle: 'Buat akun SmartBIN dan kumpulkan poin dari setoran sampah di sekitarmu.',
               ),
               const SizedBox(height: 24),
               if (_error != null) ...[
                 AuthNotice(icon: Icons.error_outline, title: 'Pendaftaran gagal', body: _error!, tone: PillTone.error),
                 const SizedBox(height: 16),
               ],
-              const FieldLabel('Nomor Induk Mahasiswa (NIM)'),
+              const FieldLabel('NIK KTP'),
               TextFormField(
-                controller: _nim,
-                keyboardType: TextInputType.text,
-                textCapitalization: TextCapitalization.characters,
+                controller: _nik,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(16)],
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  hintText: 'Contoh: E32253079',
-                  prefixIcon: Icon(Icons.badge_outlined),
-                  helperText: '8–15 huruf atau angka, wajib unik dan sesuai kartu identitas kampus aktif',
+                  hintText: 'Masukkan 16 digit NIK',
+                  prefixIcon: Icon(Icons.credit_card_outlined),
+                  helperText: 'NIK diproses dengan hash berkunci dan tidak ditampilkan kembali.',
                 ),
                 validator: (v) {
-                  if (_serverErrors['nim'] != null) return _serverErrors['nim'];
+                  if (_serverErrors['nik'] != null) return _serverErrors['nik'];
                   final s = v?.trim() ?? '';
-                  if (s.isEmpty) return 'NIM wajib diisi';
-                  if (!RegExp(r'^[A-Za-z0-9]{8,15}$').hasMatch(s)) return 'NIM berupa 8–15 huruf atau angka';
+                  if (s.isEmpty) return 'NIK wajib diisi';
+                  if (!RegExp(r'^\d{16}$').hasMatch(s)) return 'NIK harus terdiri dari 16 angka';
                   return null;
                 },
               ),
@@ -138,22 +139,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 validator: (v) => (v?.trim().length ?? 0) < 3 ? 'Nama minimal 3 karakter' : null,
               ),
               const SizedBox(height: 18),
-              const FieldLabel('Email Kampus'),
+              const FieldLabel('Email'),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(
-                  hintText: 'nama@student.polije.ac.id',
-                  prefixIcon: Icon(Icons.school_outlined),
-                  helperText: 'Gunakan email kampus @student.polije.ac.id',
-                ),
+                decoration: const InputDecoration(hintText: 'nama@email.com', prefixIcon: Icon(Icons.email_outlined)),
                 validator: (v) {
                   if (_serverErrors['email'] != null) return _serverErrors['email'];
                   final s = v?.trim() ?? '';
-                  if (!RegExp(r'^[\w.+-]+@student\.polije\.ac\.id$', caseSensitive: false).hasMatch(s)) {
-                    return 'Gunakan email kampus @student.polije.ac.id';
+                  if (!RegExp(r'^[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}$', caseSensitive: false).hasMatch(s)) {
+                    return 'Masukkan alamat email yang valid';
                   }
                   return null;
                 },
@@ -290,7 +287,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: BoxDecoration(color: p.cardMuted, borderRadius: BorderRadius.circular(20)),
                 child: Column(
                   children: [
-                    Text('Sudah memiliki akun mahasiswa?', style: context.text.bodyMedium?.copyWith(color: p.textSecondary)),
+                    Text('Sudah memiliki akun SmartBIN?', style: context.text.bodyMedium?.copyWith(color: p.textSecondary)),
                     TextButton.icon(
                       onPressed: () => context.canPop() ? context.pop() : context.go('/login'),
                       icon: const Icon(Icons.login),

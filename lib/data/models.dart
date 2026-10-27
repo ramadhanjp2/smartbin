@@ -8,7 +8,7 @@ enum WasteType {
   final String label;
 }
 
-/// HELD = setoran dari KTM yang belum tertaut; CREDITED = sudah masuk saldo.
+/// HELD = setoran dari KTP yang belum tertaut; CREDITED = sudah masuk saldo.
 enum DepositStatus { held, credited }
 
 enum MachineStatus {
@@ -34,16 +34,18 @@ class CardLink {
 class AppUser {
   const AppUser({
     required this.id,
-    required this.nim,
+    this.nim,
     required this.name,
     required this.email,
     required this.role,
-    this.faculty = 'Mahasiswa',
+    this.faculty = 'Pengguna SmartBIN',
     this.card,
   });
 
   final String id;
-  final String nim;
+
+  /// NIM lama untuk kompatibilitas akun terdahulu; NIK baru tidak pernah dikirim balik.
+  final String? nim;
   final String name;
   final String email;
   final UserRole role;

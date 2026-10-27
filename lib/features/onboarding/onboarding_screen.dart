@@ -20,12 +20,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     (
       Icons.recycling,
       'Apa itu SmartBIN?',
-      'Tempat sampah pintar di kampus yang memilah sampah organik dan anorganik, lalu memberi poin dari setiap setoranmu.',
+      'Tempat sampah pintar di lingkungan sekitar yang memilah sampah organik dan anorganik, lalu memberi poin dari setiap setoranmu.',
     ),
     (
       Icons.contactless,
       'Cara Menyetor',
-      'Tempelkan KTM ke pembaca RFID di mesin, masukkan sampah ke lubang yang sesuai, dan tunggu penimbangan otomatis.',
+      'Tempelkan KTP ke pembaca kartu di mesin, masukkan sampah ke lubang yang sesuai, dan tunggu penimbangan otomatis.',
     ),
     (
       Icons.calculate_outlined,

@@ -7,7 +7,7 @@ import 'smartbin_repository.dart';
 /// supaya pengembangan Flutter tidak menunggu backend dan mesin.
 ///
 /// Akun demo:
-/// - Mahasiswa: NIM `2106728190` atau `ramadhan@student.polije.ac.id`, sandi `smartbin123`
+/// - Pengguna demo: NIK `1234567890123456` atau `ramadhan@example.com`, sandi `smartbin123`
 /// - Admin: `admin@smartbin.id`, sandi `admin1234`
 class MockSmartbinRepository implements SmartbinRepository {
   MockSmartbinRepository({this.latency = const Duration(milliseconds: 700)}) {
@@ -27,7 +27,7 @@ class MockSmartbinRepository implements SmartbinRepository {
   late List<AppNotification> _notifications;
   late List<Machine> _machines;
 
-  final Map<String, ({AppUser user, String password})> _accounts = {};
+  final Map<String, ({AppUser user, String password, String? nik})> _accounts = {};
 
   Future<void> _delay() => Future.delayed(latency + Duration(milliseconds: _rng.nextInt(300)));
 
@@ -41,18 +41,19 @@ class MockSmartbinRepository implements SmartbinRepository {
     final now = DateTime.now();
     DateTime ago({int d = 0, int h = 0, int m = 0}) => now.subtract(Duration(days: d, hours: h, minutes: m));
 
-    _accounts['2106728190'] = (
+    _accounts['ramadhan@example.com'] = (
       user: const AppUser(
         id: 'u-1',
         nim: '2106728190',
         name: 'Muhammad Alif Ramadhan',
-        email: 'ramadhan@student.polije.ac.id',
+        email: 'ramadhan@example.com',
         role: UserRole.user,
-        faculty: 'Mahasiswa Teknik Komputer · UI',
+        faculty: 'Pengguna SmartBIN',
       ),
       password: 'smartbin123',
+      nik: '1234567890123456',
     );
-    _accounts['admin'] = (
+    _accounts['admin@smartbin.id'] = (
       user: const AppUser(
         id: 'a-1',
         nim: 'ADM-001',
@@ -62,6 +63,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         faculty: 'Pengelola Mesin · Fasilitas UI',
       ),
       password: 'admin1234',
+      nik: null,
     );
 
     _balance = 1450;
@@ -135,7 +137,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         id: 'n-3',
         kind: NotificationKind.sync,
         title: 'Poin Tertahan Telah Disimpan Aman',
-        body: 'Ada 2 setoran dari KTM yang belum tertaut ke akun. Tautkan KTM agar 120 poin masuk ke saldo utama.',
+        body: 'Ada 2 setoran dari KTP yang belum tertaut ke akun. Tautkan KTP agar 120 poin masuk ke saldo utama.',
         createdAt: ago(d: 2, h: 3),
         read: false,
         tag: 'Tertahan',
@@ -246,8 +248,8 @@ class MockSmartbinRepository implements SmartbinRepository {
     }
     final id = identifier.trim().toLowerCase();
     final match =
-        _accounts.values.where((a) => a.user.nim.toLowerCase() == id || a.user.email.toLowerCase() == id).firstOrNull ??
-        (id == 'admin' ? _accounts['admin'] : null);
+        _accounts.values.where((a) => a.user.nim?.toLowerCase() == id || a.user.email.toLowerCase() == id || a.nik == id).firstOrNull ??
+        (id == 'admin' ? _accounts['admin@smartbin.id'] : null);
     if (match == null || match.password != password) {
       _failedLogins++;
       if (_failedLogins >= 5) {
@@ -255,7 +257,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         _failedLogins = 0;
         throw const AppException('5 kali gagal berturut-turut. Login dikunci selama 5 menit.');
       }
-      throw AppException('NIM/email atau kata sandi salah. Tersisa ${5 - _failedLogins}x percobaan.');
+      throw AppException('NIK/email atau kata sandi salah. Tersisa ${5 - _failedLogins}x percobaan.');
     }
     if (asAdmin && match.user.role != UserRole.admin) {
       throw const AppException('Akun ini tidak memiliki akses Admin / Teknisi.');
@@ -267,25 +269,25 @@ class MockSmartbinRepository implements SmartbinRepository {
   int get remainingLoginAttempts => 5 - _failedLogins;
 
   @override
-  Future<AppUser> register({required String nim, required String name, required String email, required String password}) async {
+  Future<AppUser> register({required String nik, required String name, required String email, required String password}) async {
     await _delay();
-    final normalizedNim = nim.trim().toUpperCase();
+    final normalizedNik = nik.trim();
     final normalizedEmail = email.trim().toLowerCase();
-    if (!RegExp(r'^[A-Za-z0-9]{8,15}$').hasMatch(normalizedNim)) {
-      throw const AppException('NIM berupa 8–15 huruf atau angka.', field: 'nim');
+    if (!RegExp(r'^\d{16}$').hasMatch(normalizedNik)) {
+      throw const AppException('NIK harus terdiri dari 16 angka.', field: 'nik');
     }
-    if (!RegExp(r'^[\w.+-]+@student\.polije\.ac\.id$').hasMatch(normalizedEmail)) {
-      throw const AppException('Gunakan email kampus @student.polije.ac.id.', field: 'email');
+    if (!RegExp(r'^[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}$').hasMatch(normalizedEmail)) {
+      throw const AppException('Masukkan alamat email yang valid.', field: 'email');
     }
-    if (_accounts.values.any((a) => a.user.nim.toUpperCase() == normalizedNim)) {
-      throw const AppException('NIM sudah terdaftar. Silakan masuk dengan akun tersebut.', field: 'nim');
+    if (_accounts.values.any((a) => a.nik == normalizedNik)) {
+      throw const AppException('NIK sudah terdaftar. Silakan masuk dengan akun tersebut.', field: 'nik');
     }
     if (_accounts.values.any((a) => a.user.email.toLowerCase() == normalizedEmail)) {
-      throw const AppException('Email kampus sudah dipakai akun lain.', field: 'email');
+      throw const AppException('Email sudah dipakai akun lain.', field: 'email');
     }
-    final user = AppUser(id: 'u-${_accounts.length + 1}', nim: normalizedNim, name: name, email: normalizedEmail, role: UserRole.user);
-    _accounts[normalizedNim] = (user: user, password: password);
-    // Akun baru: saldo kosong, tetapi mesin mungkin sudah mencatat setoran dari KTM ini (tertahan).
+    final user = AppUser(id: 'u-${_accounts.length + 1}', name: name, email: normalizedEmail, role: UserRole.user);
+    _accounts[normalizedEmail] = (user: user, password: password, nik: normalizedNik);
+    // Akun baru: saldo kosong, tetapi mesin mungkin sudah mencatat setoran dari KTP ini (tertahan).
     _balance = 0;
     _deposits = _deposits.where((d) => d.isHeld).toList();
     _notifications = [];
@@ -308,7 +310,8 @@ class MockSmartbinRepository implements SmartbinRepository {
   Future<AppUser> updateName(String name) async {
     await _delay();
     final updated = _user.copyWith(name: name);
-    _accounts[_accountKey(updated)] = (user: updated, password: _accounts[_accountKey(updated)]!.password);
+    final account = _accounts[_accountKey(updated)]!;
+    _accounts[_accountKey(updated)] = (user: updated, password: account.password, nik: account.nik);
     return _session = updated;
   }
 
@@ -319,19 +322,19 @@ class MockSmartbinRepository implements SmartbinRepository {
     if (_accounts[key]!.password != oldPassword) {
       throw const AppException('Kata sandi lama tidak sesuai.', field: 'old');
     }
-    _accounts[key] = (user: _user, password: newPassword);
+    _accounts[key] = (user: _user, password: newPassword, nik: _accounts[key]!.nik);
   }
 
-  String _accountKey(AppUser u) => u.role == UserRole.admin ? 'admin' : u.nim;
+  String _accountKey(AppUser u) => u.email;
 
-  // ---------------- KTM ----------------
+  // ---------------- KTP ----------------
 
   @override
   Future<LinkResult> linkCard(String uid) async {
     await _delay();
-    if (_user.isCardLinked) throw const AppException('Akun ini sudah memiliki KTM tertaut.');
+    if (_user.isCardLinked) throw const AppException('Akun ini sudah memiliki KTP tertaut.');
     if (uid.toUpperCase().startsWith('04DEAD')) {
-      throw const AppException('KTM sudah tertaut ke akun lain.');
+      throw const AppException('KTP sudah tertaut ke akun lain.');
     }
     final held = _deposits.where((d) => d.isHeld).toList();
     final pts = held.fold<int>(0, (s, d) => s + d.points);
@@ -341,19 +344,20 @@ class MockSmartbinRepository implements SmartbinRepository {
     final updated = _user.copyWith(
       card: CardLink(linkedAt: DateTime.now(), uidHashSuffix: hash),
     );
-    _accounts[_accountKey(updated)] = (user: updated, password: _accounts[_accountKey(updated)]!.password);
+    final account = _accounts[_accountKey(updated)]!;
+    _accounts[_accountKey(updated)] = (user: updated, password: account.password, nik: account.nik);
     _session = updated;
     _notifications = [
       AppNotification(
         id: 'n-${DateTime.now().millisecondsSinceEpoch}',
         kind: NotificationKind.card,
-        title: 'KTM RFID Berhasil Ditautkan!',
+        title: 'KTP Berhasil Ditautkan!',
         body: pts > 0
-            ? 'Kartu Tanda Mahasiswa Anda kini tertaut. +$pts poin dari ${held.length} setoran tertahan dimasukkan ke saldo.'
-            : 'Kartu Tanda Mahasiswa Anda kini tertaut dan siap dipakai di semua mesin SmartBIN.',
+            ? 'Kartu KTP Anda kini tertaut. +$pts poin dari ${held.length} setoran tertahan dimasukkan ke saldo.'
+            : 'Kartu KTP Anda kini tertaut dan siap dipakai di semua mesin SmartBIN.',
         createdAt: DateTime.now(),
         read: false,
-        tag: 'KTM Aktif',
+        tag: 'KTP Aktif',
       ),
       ..._notifications,
     ];
@@ -368,7 +372,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       throw const AppException('Kata sandi tidak sesuai.', field: 'password');
     }
     final updated = _user.copyWith(clearCard: true);
-    _accounts[key] = (user: updated, password: password);
+    _accounts[key] = (user: updated, password: password, nik: _accounts[key]!.nik);
     _session = updated;
   }
 
@@ -434,7 +438,7 @@ class MockSmartbinRepository implements SmartbinRepository {
     final now = DateTime.now();
     return [
       TelemetryLog(
-        title: 'KTM ID: 2210511048 Disetujui',
+        title: 'KTP ID berhasil diverifikasi',
         detail: '1 Botol Plastik +50 Poin terkreditasi',
         time: now.subtract(const Duration(seconds: 8)),
         kind: 'rfid',

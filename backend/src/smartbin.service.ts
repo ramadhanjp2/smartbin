@@ -61,18 +61,19 @@ export class SmartbinService {
   ) {}
 
   async register(dto: RegisterDto): Promise<unknown> {
-    const nim = dto.nim.trim().toUpperCase();
+    const nikHash = this.nikHash(dto.nik);
     const email = dto.email.trim().toLowerCase();
     const exists = await this.users.findOne({
-      where: [{ nim }, { email }],
+      where: [{ nikHash }, { email }],
     });
     if (exists)
       throw new ConflictException({
         code: "ACCOUNT_EXISTS",
-        message: "NIM atau email sudah terdaftar.",
+        message: "NIK atau email sudah terdaftar.",
       });
     const user = this.users.create({
-      nim,
+      nim: null,
+      nikHash,
       email,
       name: dto.name.trim(),
       passwordHash: await bcrypt.hash(dto.password, 12),
@@ -84,10 +85,14 @@ export class SmartbinService {
 
   async login(dto: LoginDto): Promise<unknown> {
     const rawIdentifier = dto.identifier.trim();
-    const identifier = rawIdentifier.includes("@")
+    const isEmail = rawIdentifier.includes("@");
+    const isNik = /^\d{16}$/.test(rawIdentifier);
+    const identifier = isEmail
       ? rawIdentifier.toLowerCase()
       : rawIdentifier.toUpperCase();
-    const storedAttempt = this.failures.get(identifier);
+    const lookupIdentifier = isNik ? this.nikHash(rawIdentifier) : identifier;
+    const failureKey = isNik ? lookupIdentifier : identifier;
+    const storedAttempt = this.failures.get(failureKey);
     if (storedAttempt && storedAttempt.until > Date.now()) {
       throw new UnauthorizedException({
         code: "LOGIN_LOCKED",
@@ -99,14 +104,18 @@ export class SmartbinService {
         ? undefined
         : storedAttempt;
     if (storedAttempt?.until && storedAttempt.until <= Date.now())
-      this.failures.delete(identifier);
+      this.failures.delete(failureKey);
 
     const user = await this.users
       .createQueryBuilder("user")
       .addSelect("user.passwordHash")
-      .where("user.email = :identifier OR user.nim = :identifier", {
-        identifier,
-      })
+      .where(
+        "user.email = :identifier OR user.nim = :identifier OR user.nikHash = :nikHash",
+        {
+          identifier,
+          nikHash: isNik ? lookupIdentifier : "",
+        },
+      )
       .getOne();
     const valid = user
       ? await bcrypt.compare(dto.password, user.passwordHash)
@@ -114,16 +123,16 @@ export class SmartbinService {
     if (!user || !valid) {
       const count = (attempt?.count ?? 0) + 1;
       const max = Number(this.config.get("LOGIN_MAX_ATTEMPTS", 5));
-      this.failures.set(identifier, {
+      this.failures.set(failureKey, {
         count,
         until: count >= max ? Date.now() + 5 * 60_000 : 0,
       });
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
-        message: "Email/NIM atau kata sandi salah.",
+        message: "NIK/email atau kata sandi salah.",
       });
     }
-    this.failures.delete(identifier);
+    this.failures.delete(failureKey);
     return this.issueTokens(user);
   }
 
@@ -214,7 +223,7 @@ export class SmartbinService {
     if (existing && existing.userId !== userId) {
       throw new ConflictException({
         code: "CARD_ALREADY_LINKED",
-        message: "KTM sudah ditautkan ke akun lain.",
+        message: "KTP sudah ditautkan ke akun lain.",
       });
     }
     let creditedPoints = 0;
@@ -603,6 +612,15 @@ export class SmartbinService {
           }
         : null,
     };
+  }
+
+  private nikHash(nik: string): string {
+    return createHmac(
+      "sha256",
+      this.config.getOrThrow<string>("NIK_HMAC_SECRET"),
+    )
+      .update(nik.trim())
+      .digest("hex");
   }
 
   private publicDeposit(deposit: DepositEntity): unknown {

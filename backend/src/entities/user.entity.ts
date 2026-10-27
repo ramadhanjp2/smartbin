@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -20,11 +21,15 @@ export class UserEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ unique: true, length: 32 })
-  nim!: string;
+  @Column({ unique: true, length: 32, nullable: true })
+  nim!: string | null;
 
   @Column({ unique: true, length: 254 })
   email!: string;
+
+  @Index("uq_users_nik_hash", { unique: true })
+  @Column({ name: "nik_hash", length: 64, nullable: true, select: false })
+  nikHash!: string | null;
 
   @Column({ length: 120 })
   name!: string;

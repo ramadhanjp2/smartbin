@@ -60,9 +60,9 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
-  Future<AppUser> register({required String nim, required String name, required String email, required String password}) async {
+  Future<AppUser> register({required String nik, required String name, required String email, required String password}) async {
     final response = _asMap(
-      await _request('POST', 'auth/register', body: {'nim': nim, 'name': name, 'email': email, 'password': password}, authenticated: false),
+      await _request('POST', 'auth/register', body: {'nik': nik, 'name': name, 'email': email, 'password': password}, authenticated: false),
     );
     await _saveTokens(response);
     return _userFromJson(_asMap(response['user']));
@@ -332,7 +332,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
     final cardJson = json['card'];
     return AppUser(
       id: _stringValue(json['id']),
-      nim: _stringValue(json['nim']),
+      nim: json['nim'] == null ? null : _stringValue(json['nim']),
       name: _stringValue(json['name']),
       email: _stringValue(json['email']),
       role: _enumValue(UserRole.values, _stringValue(json['role']), (value) => value.name, 'user role'),

@@ -2,29 +2,29 @@ import { validate } from "class-validator";
 import { RegisterDto } from "./dto";
 
 describe("RegisterDto", () => {
-  it("accepts an alphanumeric NIM and the campus email domain", async () => {
+  it("accepts a 16-digit NIK and a public email address", async () => {
     const dto = Object.assign(new RegisterDto(), {
-      nim: "E32253079",
-      name: "Mahasiswa SmartBIN",
-      email: "mahasiswa@student.polije.ac.id",
+      nik: "1234567890123456",
+      name: "Pengguna SmartBIN",
+      email: "pengguna@example.com",
       password: "smartbin123",
     });
 
     await expect(validate(dto)).resolves.toHaveLength(0);
   });
 
-  it("rejects malformed NIMs and email addresses outside the campus domain", async () => {
+  it("rejects malformed NIKs and invalid email addresses", async () => {
     const dto = Object.assign(new RegisterDto(), {
-      nim: "E322-53079",
-      name: "Mahasiswa SmartBIN",
-      email: "mahasiswa@kampus.ac.id",
+      nik: "12345-789",
+      name: "Pengguna SmartBIN",
+      email: "bukan-email",
       password: "smartbin123",
     });
 
     const errors = await validate(dto);
 
     expect(errors.map(({ property }) => property)).toEqual(
-      expect.arrayContaining(["nim", "email"]),
+      expect.arrayContaining(["nik", "email"]),
     );
   });
 });

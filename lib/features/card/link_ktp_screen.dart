@@ -13,15 +13,15 @@ import '../../state/providers.dart';
 
 enum _Phase { idle, scanning, linking, success, error }
 
-/// S04 – Tautkan KTM lewat NFC.
-class LinkKtmScreen extends ConsumerStatefulWidget {
-  const LinkKtmScreen({super.key});
+/// S04 – Tautkan KTP lewat NFC.
+class LinkKtpScreen extends ConsumerStatefulWidget {
+  const LinkKtpScreen({super.key});
 
   @override
-  ConsumerState<LinkKtmScreen> createState() => _LinkKtmScreenState();
+  ConsumerState<LinkKtpScreen> createState() => _LinkKtpScreenState();
 }
 
-class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTickerProviderStateMixin {
+class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTickerProviderStateMixin {
   late final _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
   _Phase _phase = _Phase.idle;
   NfcAvailability? _nfc;
@@ -61,7 +61,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _error = e is AppException ? e.message : 'Kartu tidak terbaca. Tempelkan KTM lebih lama di bagian belakang ponsel.';
+        _error = e is AppException ? e.message : 'Kartu tidak terbaca. Tempelkan KTP lebih lama di bagian belakang ponsel.';
       });
     }
   }
@@ -82,7 +82,6 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
   Widget build(BuildContext context) {
     final p = context.palette;
     final firstRun = ref.watch(authProvider).needsCardSetup;
-    final user = ref.watch(currentUserProvider);
     final held = ref.watch(pointsSummaryProvider).value?.heldPoints ?? 0;
 
     if (_phase == _Phase.success) return _SuccessView(result: _result!, onDone: _finish);
@@ -91,7 +90,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
     final busy = _phase == _Phase.scanning || _phase == _Phase.linking;
 
     return Scaffold(
-      appBar: SmartbinAppBar(title: 'Tautkan KTM', showBack: !firstRun),
+      appBar: SmartbinAppBar(title: 'Tautkan KTP', showBack: !firstRun),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
@@ -106,11 +105,16 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
             ],
           ),
           const SizedBox(height: 12),
-          Text('Tautkan KTM Mahasiswa', style: context.text.headlineLarge?.copyWith(color: p.textPrimary)),
+          Text('Tautkan KTP', style: context.text.headlineLarge?.copyWith(color: p.textPrimary)),
           const SizedBox(height: 6),
           Text(
-            'Tempelkan Kartu Tanda Mahasiswa (KTM RFID 13,56 MHz) ke bagian belakang ponsel Anda untuk verifikasi instan.',
+            'Tempelkan kartu KTP ke bagian belakang ponsel untuk menghubungkan kartu yang digunakan pada mesin SmartBIN.',
             style: context.text.bodyMedium?.copyWith(color: p.textMuted, height: 1.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Catatan: pembacaan NFC di aplikasi masih berupa simulasi. Pembaca kartu pada mesin harus mengirim UID yang sama ke backend.',
+            style: context.text.bodySmall?.copyWith(color: p.warning, height: 1.45),
           ),
           const SizedBox(height: 20),
 
@@ -168,10 +172,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
                         child!,
                       ],
                     ),
-                    child: Transform.rotate(
-                      angle: -4 * math.pi / 180,
-                      child: _KtmIllustration(name: user?.name ?? '', nim: user?.nim ?? ''),
-                    ),
+                    child: Transform.rotate(angle: -4 * math.pi / 180, child: const _KtpIllustration()),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -226,7 +227,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text('Mengapa harus menautkan KTM?', style: context.text.headlineSmall?.copyWith(color: p.textPrimary)),
+                      child: Text('Mengapa harus menautkan KTP?', style: context.text.headlineSmall?.copyWith(color: p.textPrimary)),
                     ),
                   ],
                 ),
@@ -242,7 +243,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
                 _Reason(
                   n: held > 0 ? 3 : 2,
                   title: 'Tanpa Repot Buka Aplikasi',
-                  body: 'Cukup tempelkan KTM ke scanner mesin SmartBIN di koridor kampus.',
+                  body: 'Cukup tempelkan KTP ke pembaca kartu mesin SmartBIN di lokasi terdekat.',
                 ),
               ],
             ),
@@ -263,7 +264,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.contactless),
             label: Text(switch (_phase) {
-              _Phase.scanning => 'Tempelkan KTM sekarang…',
+              _Phase.scanning => 'Tempelkan KTP sekarang…',
               _Phase.linking => 'Menautkan…',
               _Phase.error => 'Coba Pindai Lagi',
               _ => 'Mulai Pindai NFC',
@@ -273,7 +274,7 @@ class _LinkKtmScreenState extends ConsumerState<LinkKtmScreen> with SingleTicker
           TextButton(onPressed: busy ? null : _finish, child: Text(firstRun ? 'Lewati Sementara' : 'Nanti Saja')),
           if (firstRun)
             Text(
-              'Poin dari setoran tetap disimpan sebagai poin tertahan sampai KTM ditautkan.',
+              'Poin dari setoran tetap disimpan sebagai poin tertahan sampai KTP ditautkan.',
               textAlign: TextAlign.center,
               style: context.text.bodySmall?.copyWith(color: p.textMuted),
             ),
@@ -328,21 +329,21 @@ class _Reason extends StatelessWidget {
   }
 }
 
-class _KtmIllustration extends StatelessWidget {
-  const _KtmIllustration({required this.name, required this.nim});
-  final String name, nim;
+class _KtpIllustration extends StatelessWidget {
+  const _KtpIllustration();
 
   @override
   Widget build(BuildContext context) {
-    const soft = Color(0xFFA5D6A7);
+    const soft = Color(0xFF1E596A);
     final t = context.text;
     return Container(
       width: 280,
       height: 170,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B5E20),
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0xFFD8F0F4),
+        border: Border.all(color: const Color(0xFF91C4D0)),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 10))],
       ),
       child: Column(
@@ -350,50 +351,93 @@ class _KtmIllustration extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.school_outlined, color: soft, size: 20),
+              const Icon(Icons.credit_card_outlined, color: soft, size: 20),
               const SizedBox(width: 6),
               Expanded(
-                child: Text('KARTU TANDA\nMAHASISWA', style: t.labelSmall?.copyWith(color: soft, letterSpacing: 1.4)),
+                child: Text(
+                  'KARTU IDENTITAS\nSMARTBIN DEMO',
+                  style: t.labelSmall?.copyWith(color: soft, letterSpacing: 0.6, fontWeight: FontWeight.w900),
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(999)),
-                child: Text('13,56 MHz', style: t.labelSmall?.copyWith(color: Colors.white)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: 40,
-            height: 30,
-            decoration: BoxDecoration(color: const Color(0xFFF9C74F), borderRadius: BorderRadius.circular(6)),
-          ),
-          const Spacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('NIM Mahasiswa', style: t.labelSmall?.copyWith(color: Colors.white70)),
-                    Text(nim.isEmpty ? '••••••••••' : nim, style: t.titleMedium?.copyWith(color: Colors.white, letterSpacing: 1.5)),
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.labelSmall?.copyWith(color: soft),
-                    ),
-                  ],
+                decoration: BoxDecoration(color: const Color(0xFFFFE0B2), borderRadius: BorderRadius.circular(999)),
+                child: Text(
+                  'SIMULASI',
+                  style: t.labelSmall?.copyWith(color: const Color(0xFF8A3B18), fontWeight: FontWeight.w900),
                 ),
               ),
-              Text('SMARTBIN', style: t.labelSmall?.copyWith(color: Colors.white70)),
             ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _KtpField(label: 'NIK', value: '•••• •••• •••• ••••'),
+                      _KtpField(label: 'Nama', value: 'PENGGUNA DEMO'),
+                      _KtpField(label: 'Tempat/Tgl Lahir', value: 'DATA SIMULASI'),
+                      _KtpField(label: 'Alamat', value: 'PENGGUNA SMARTBIN'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 56,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCEEAF0),
+                    border: Border.all(color: const Color(0xFF76AEBE)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.person_outline, size: 32, color: Color(0xFF397889)),
+                      Text(
+                        'ILUSTRASI',
+                        style: TextStyle(fontSize: 6, color: Color(0xFF326D7E), fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(color: const Color(0xFF8A3B18), borderRadius: BorderRadius.circular(4)),
+            child: Text(
+              'SIMULASI • BUKAN KTP ASLI',
+              style: t.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.7),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _KtpField extends StatelessWidget {
+  const _KtpField({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 2),
+    child: Text(
+      '$label: $value',
+      style: const TextStyle(fontSize: 7.5, height: 1.15, color: Color(0xFF174E63), fontWeight: FontWeight.w800),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+  );
 }
 
 class _SuccessView extends StatelessWidget {
@@ -419,7 +463,7 @@ class _SuccessView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'KTM Berhasil Ditautkan!',
+                'KTP Berhasil Ditautkan!',
                 textAlign: TextAlign.center,
                 style: context.text.headlineLarge?.copyWith(color: p.textPrimary),
               ),

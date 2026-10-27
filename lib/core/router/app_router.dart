@@ -6,7 +6,7 @@ import '../../data/models.dart';
 import '../../features/admin/admin_dashboard_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
-import '../../features/card/link_ktm_screen.dart';
+import '../../features/card/link_ktp_screen.dart';
 import '../../features/history/deposit_detail_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/home/home_screen.dart';
@@ -37,7 +37,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!ref.read(onboardingSeenProvider)) return loc == '/onboarding' ? null : '/onboarding';
       if (user == null) return (_guestRoutes.contains(loc) && loc != '/onboarding') ? null : '/login';
-      if (auth.needsCardSetup) return loc == '/link-ktm' ? null : '/link-ktm';
+      if (auth.needsCardSetup) return loc == '/link-ktp' ? null : '/link-ktp';
       if (_guestRoutes.contains(loc)) return user.role == UserRole.admin ? '/admin' : '/home';
       if (loc == '/admin' && user.role != UserRole.admin) return '/home';
       return null;
@@ -49,7 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => LoginScreen(message: s.uri.queryParameters['msg']),
       ),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
-      GoRoute(path: '/link-ktm', builder: (_, _) => const LinkKtmScreen()),
+      GoRoute(path: '/link-ktp', builder: (_, _) => const LinkKtpScreen()),
       GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(
         path: '/deposit/:id',

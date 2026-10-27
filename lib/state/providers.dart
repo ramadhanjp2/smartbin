@@ -84,7 +84,7 @@ class AuthState {
   const AuthState({this.user, this.needsCardSetup = false});
   final AppUser? user;
 
-  /// True tepat setelah registrasi: pengguna diarahkan ke layar Tautkan KTM.
+  /// True tepat setelah registrasi: pengguna diarahkan untuk menautkan KTP.
   final bool needsCardSetup;
 }
 
@@ -104,8 +104,8 @@ class AuthController extends Notifier<AuthState> {
     if (user != null) state = AuthState(user: user);
   }
 
-  Future<void> register({required String nim, required String name, required String email, required String password}) async {
-    final user = await _repo.register(nim: nim, name: name, email: email, password: password);
+  Future<void> register({required String nik, required String name, required String email, required String password}) async {
+    final user = await _repo.register(nik: nik, name: name, email: email, password: password);
     _invalidateUserData();
     state = AuthState(user: user, needsCardSetup: true);
   }

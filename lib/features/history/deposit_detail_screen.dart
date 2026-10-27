@@ -57,8 +57,8 @@ class _Body extends ConsumerWidget {
           child: Column(
             children: [
               d.isHeld
-                  ? const StatusPill(label: 'Menunggu Tautan KTM', tone: PillTone.warning, icon: Icons.schedule)
-                  : const StatusPill(label: 'Terkreditasi ke Saldo KTM', icon: Icons.check_circle),
+                  ? const StatusPill(label: 'Menunggu Tautan KTP', tone: PillTone.warning, icon: Icons.schedule)
+                  : const StatusPill(label: 'Terkreditasi ke Saldo SmartBIN', icon: Icons.check_circle),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -88,12 +88,12 @@ class _Body extends ConsumerWidget {
               if (d.isHeld && user != null && !user.isCardLinked) ...[
                 const SizedBox(height: 16),
                 Text(
-                  'Poin ini akan masuk ke saldo setelah KTM Anda ditautkan.',
+                  'Poin ini akan masuk ke saldo setelah KTP Anda ditautkan.',
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: p.warning),
                 ),
                 const SizedBox(height: 12),
-                FilledButton.icon(onPressed: () => context.push('/link-ktm'), icon: const Icon(Icons.contactless), label: const Text('Tautkan KTM')),
+                FilledButton.icon(onPressed: () => context.push('/link-ktp'), icon: const Icon(Icons.contactless), label: const Text('Tautkan KTP')),
               ],
             ],
           ),
@@ -233,7 +233,7 @@ class _Body extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               _Row(label: 'Mesin', value: d.machineName),
-              _Row(label: 'Status KTM', value: user?.card != null ? 'Tertaut · ****${user!.card!.uidHashSuffix}' : 'Belum tertaut'),
+              _Row(label: 'Status KTP', value: user?.card != null ? 'Tertaut · ****${user!.card!.uidHashSuffix}' : 'Belum tertaut'),
               if (balance != null) _Row(label: 'Total Saldo Poin Akun', value: '${Fmt.points(balance)} Poin', strong: true),
             ],
           ),

@@ -40,7 +40,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'NIM: ${user.nim} • ${user.email}',
+                  user.nim == null ? user.email : 'NIM lama: ${user.nim} • ${user.email}',
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: p.textMuted),
                 ),
@@ -304,11 +304,11 @@ class ProfileScreen extends ConsumerWidget {
             Text('Kebijakan Privasi', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             SizedBox(height: 12),
             Text(
-              '• Data yang disimpan: NIM, nama, email kampus, dan riwayat setoran.\n'
-              '• UID KTM tidak disimpan di ponsel maupun server; server hanya menyimpan hash HMAC.\n'
+              '• Data yang disimpan: hash HMAC NIK, nama, email, dan riwayat setoran.\n'
+              '• NIK dan UID KTP tidak disimpan dalam bentuk asli; server menyimpan hash HMAC berkunci.\n'
               '• Aplikasi tidak meminta lokasi, kontak, atau kamera.\n'
               '• Hapus akun menganonimkan riwayat setoran dan menghapus data pribadi.\n'
-              '• Jangan meminjamkan KTM untuk menyetor sampah.\n\n'
+              '• Jangan meminjamkan KTP untuk menyetor sampah.\n\n'
               'Rujukan: UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi.',
               style: TextStyle(height: 1.6),
             ),
@@ -325,7 +325,7 @@ class _KtmCard extends ConsumerWidget {
 
   Future<void> _unlink(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(context: context, builder: (_) => const _UnlinkDialog());
-    if (ok == true && context.mounted) showSnack(context, 'Tautan KTM dilepas. Saldo poin Anda tetap.');
+    if (ok == true && context.mounted) showSnack(context, 'Tautan KTP dilepas. Saldo poin Anda tetap.');
   }
 
   @override
@@ -375,7 +375,7 @@ class _KtmCard extends ConsumerWidget {
                     Icon(Icons.credit_card, color: soft, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('KARTU TANDA MAHASISWA', style: context.text.labelMedium?.copyWith(color: soft, letterSpacing: 1)),
+                      child: Text('KARTU TANDA PENDUDUK', style: context.text.labelMedium?.copyWith(color: soft, letterSpacing: 1)),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -384,7 +384,7 @@ class _KtmCard extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        card != null ? '● KTM Tertaut' : '● Belum Tertaut',
+                        card != null ? '● KTP Tertaut' : '● Belum Tertaut',
                         style: context.text.labelMedium?.copyWith(
                           color: card != null ? const Color(0xFF1B5E20) : const Color(0xFFE65100),
                           fontWeight: FontWeight.w700,
@@ -395,7 +395,7 @@ class _KtmCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'NIM ${user.nim}',
+                  user.nim == null ? user.email : 'NIM lama ${user.nim}',
                   style: context.text.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),
@@ -416,16 +416,16 @@ class _KtmCard extends ConsumerWidget {
                     ),
                     onPressed: () => _unlink(context, ref),
                     icon: const Icon(Icons.link_off),
-                    label: const Text('Ganti / Lepas Tautan KTM'),
+                    label: const Text('Ganti / Lepas Tautan KTP'),
                   ),
                 ] else ...[
-                  Text('Tautkan KTM agar setiap setoran langsung masuk ke saldo Anda.', style: context.text.bodySmall?.copyWith(color: soft)),
+                  Text('Tautkan KTP agar setiap setoran langsung masuk ke saldo Anda.', style: context.text.bodySmall?.copyWith(color: soft)),
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: p.accentSoft, foregroundColor: const Color(0xFF1B5E20)),
-                    onPressed: () => context.push('/link-ktm'),
+                    onPressed: () => context.push('/link-ktp'),
                     icon: const Icon(Icons.contactless),
-                    label: const Text('Tautkan KTM Sekarang'),
+                    label: const Text('Tautkan KTP Sekarang'),
                   ),
                 ],
               ],
@@ -536,11 +536,11 @@ class _UnlinkDialogState extends ConsumerState<_UnlinkDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       icon: const Icon(Icons.link_off),
-      title: const Text('Lepas tautan KTM?'),
+      title: const Text('Lepas tautan KTP?'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Setoran dengan KTM lama tidak lagi masuk ke akun ini. Saldo poin Anda tidak berubah.'),
+          const Text('Setoran dengan KTP lama tidak lagi masuk ke akun ini. Saldo poin Anda tidak berubah.'),
           const SizedBox(height: 16),
           TextField(
             controller: _pw,
@@ -553,7 +553,7 @@ class _UnlinkDialogState extends ConsumerState<_UnlinkDialog> {
         TextButton(onPressed: _busy ? null : () => Navigator.pop(context, false), child: const Text('Batal')),
         TextButton(
           onPressed: _busy ? null : _submit,
-          child: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Lepas KTM'),
+          child: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Lepas KTP'),
         ),
       ],
     );

@@ -280,7 +280,7 @@ class _LinkKtmBanner extends StatelessWidget {
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text('KTM Belum Tertaut!', style: context.text.titleMedium?.copyWith(color: p.textSecondary)),
+                        Text('KTP Belum Tertaut!', style: context.text.titleMedium?.copyWith(color: p.textSecondary)),
                         const StatusPill(label: 'Penting', tone: PillTone.warning),
                       ],
                     ),
@@ -288,7 +288,7 @@ class _LinkKtmBanner extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          const TextSpan(text: 'Tautkan kartu RFID mahasiswa Anda '),
+                          const TextSpan(text: 'Tautkan kartu KTP Anda '),
                           if (heldPoints > 0) ...[
                             const TextSpan(text: 'untuk mencairkan '),
                             TextSpan(
@@ -312,7 +312,7 @@ class _LinkKtmBanner extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 20)),
-              onPressed: () => context.push('/link-ktm'),
+              onPressed: () => context.push('/link-ktp'),
               icon: const Icon(Icons.add_card, size: 20),
               label: const Text('Tautkan Sekarang'),
             ),
@@ -398,7 +398,7 @@ class _BalanceCard extends ConsumerWidget {
                                   text: '${Fmt.points(summary.heldPoints)} poin tertahan',
                                   style: const TextStyle(fontWeight: FontWeight.w700),
                                 ),
-                                TextSpan(text: ' dari ${summary.heldDeposits} setoran menunggu KTM ditautkan'),
+                                TextSpan(text: ' dari ${summary.heldDeposits} setoran menunggu KTP ditautkan'),
                               ],
                             ),
                             style: context.text.bodySmall?.copyWith(color: onBrand),

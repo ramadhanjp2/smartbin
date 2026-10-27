@@ -88,7 +88,7 @@ class RatesGuideScreen extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Jangan meminjamkan KTM untuk menyetor sampah. Setiap setoran tercatat ke akun pemilik KTM.',
+                    'Jangan meminjamkan KTP untuk menyetor sampah. Setiap setoran tercatat ke akun pemilik KTP.',
                     style: context.text.bodySmall?.copyWith(color: p.textSecondary, height: 1.5),
                   ),
                 ),

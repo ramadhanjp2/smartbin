@@ -29,7 +29,18 @@ const entities = [
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config: Record<string, unknown>) => {
+        if (
+          typeof config.NIK_HMAC_SECRET !== "string" ||
+          config.NIK_HMAC_SECRET.length < 32
+        ) {
+          throw new Error("NIK_HMAC_SECRET must contain at least 32 characters.");
+        }
+        return config;
+      },
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {

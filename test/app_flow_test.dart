@@ -67,7 +67,7 @@ void main() {
     await _loadFonts();
   });
 
-  testWidgets('onboarding → login → semua tab → tautkan KTM', (tester) async {
+  testWidgets('onboarding → login → semua tab → tautkan KTP', (tester) async {
     final c = await _start(tester, onboarded: false);
     expect(find.text('Apa itu SmartBIN?'), findsOneWidget);
     await _shot('00_onboarding');
@@ -82,7 +82,7 @@ void main() {
 
     await _login(tester, '2106728190', 'smartbin123');
     expect(find.textContaining('Halo, Muhammad'), findsOneWidget);
-    expect(find.text('KTM Belum Tertaut!'), findsOneWidget);
+    expect(find.text('KTP Belum Tertaut!'), findsOneWidget);
     expect(find.text('1.450'), findsOneWidget);
     await _shot('02_beranda');
 
@@ -127,22 +127,22 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('Tautkan Sekarang'));
     await _settle(tester);
-    expect(find.text('Tautkan KTM Mahasiswa'), findsOneWidget);
+    expect(find.text('Tautkan KTP').first, findsOneWidget);
     await _shot('09_tautkan_ktm');
 
     await tester.tap(find.text('Mulai Pindai NFC'));
     await _settle(tester, frames: 40);
-    expect(find.text('KTM Berhasil Ditautkan!'), findsOneWidget);
+    expect(find.text('KTP Berhasil Ditautkan!'), findsOneWidget);
     expect(find.textContaining('+120 poin dari 2 setoran'), findsOneWidget);
     await _shot('10_ktm_sukses');
 
     await tester.tap(find.text('Lanjut ke Beranda'));
     await _settle(tester);
-    expect(find.text('KTM Belum Tertaut!'), findsNothing);
+    expect(find.text('KTP Belum Tertaut!'), findsNothing);
     expect(find.text('1.570'), findsOneWidget);
   });
 
-  testWidgets('registrasi baru diarahkan ke Tautkan KTM langkah 2', (tester) async {
+  testWidgets('registrasi publik baru diarahkan untuk menautkan KTP', (tester) async {
     await _start(tester);
     await tester.tap(find.text('Daftar Sekarang'));
     await _settle(tester);
@@ -150,17 +150,20 @@ void main() {
 
     await tester.tap(find.text('Daftar Sekarang'));
     await _settle(tester);
-    expect(find.text('NIM wajib diisi'), findsOneWidget);
+    expect(find.text('NIK wajib diisi'), findsOneWidget);
     expect(find.text('Anda harus menyetujui kebijakan privasi'), findsOneWidget);
 
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), 'E32253079');
+    await tester.enterText(fields.at(0), '1234567890123457');
     await tester.enterText(fields.at(1), 'Rina Lestari');
-    await tester.enterText(fields.at(2), 'rina@student.polije.ac.id');
+    await tester.enterText(fields.at(2), 'rina@example.com');
     await tester.enterText(fields.at(3), 'hijau2026');
     await tester.enterText(fields.at(4), 'hijau2026');
-    await tester.tap(find.byType(Checkbox));
-    await tester.tap(find.text('Daftar Sekarang'));
+    tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).onChanged!(true);
+    await tester.pump();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    await tester.ensureVisible(find.text('Daftar Sekarang').last);
+    await tester.tap(find.text('Daftar Sekarang').last);
     await _settle(tester);
     expect(find.text('Langkah 2 dari 2'), findsOneWidget);
 
@@ -179,10 +182,36 @@ void main() {
     await _shot('12_admin');
   });
 
+  testWidgets('menu mesin hanya menampilkan satu unit tanpa lokasi', (tester) async {
+    final c = await _start(tester);
+    await _login(tester, '2106728190', 'smartbin123');
+    c.read(routerProvider).go('/machines');
+    await _settle(tester);
+
+    expect(find.text('SmartBIN Unit #01'), findsOneWidget);
+    expect(find.text('SmartBIN Unit #02'), findsNothing);
+    expect(find.text('Kampus Utama'), findsNothing);
+    expect(find.text('Lantai 1 Lobby Barat, Perpustakaan Pusat'), findsNothing);
+    expect(find.byIcon(Icons.location_on_outlined), findsNothing);
+  });
+
+  testWidgets('ilustrasi kartu identitas hanya berisi data simulasi', (tester) async {
+    final c = await _start(tester);
+    await _login(tester, '2106728190', 'smartbin123');
+    c.read(routerProvider).go('/link-ktp');
+    await _settle(tester);
+
+    expect(find.text('KARTU IDENTITAS\nSMARTBIN DEMO'), findsOneWidget);
+    expect(find.text('SIMULASI • BUKAN KTP ASLI'), findsOneWidget);
+    expect(find.textContaining('PENGGUNA DEMO'), findsOneWidget);
+    expect(find.textContaining('DATA SIMULASI'), findsOneWidget);
+    expect(find.textContaining('•••• •••• •••• ••••'), findsOneWidget);
+  });
+
   testWidgets('layar utama tidak overflow di lebar 360dp', (tester) async {
     final c = await _start(tester, size: const Size(360, 740));
-    await _login(tester, '2106728190', 'smartbin123');
-    for (final route in ['/home', '/history', '/machines', '/profile', '/notifications', '/link-ktm', '/rates']) {
+    await _login(tester, '1234567890123456', 'smartbin123');
+    for (final route in ['/home', '/history', '/machines', '/profile', '/notifications', '/link-ktp', '/rates']) {
       c.read(routerProvider).go(route);
       await _settle(tester);
       expect(tester.takeException(), isNull, reason: route);

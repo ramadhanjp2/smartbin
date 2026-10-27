@@ -29,7 +29,8 @@ class MachinesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final machines = ref.watch(machinesProvider);
-    final online = machines.value?.where((m) => m.status != MachineStatus.offline).length;
+    final visibleMachines = machines.value?.take(1).toList();
+    final online = visibleMachines?.where((m) => m.status != MachineStatus.offline).length;
 
     return Scaffold(
       appBar: const SmartbinAppBar(title: 'Mesin'),
@@ -46,12 +47,12 @@ class MachinesScreen extends ConsumerWidget {
           children: [
             Text('Status Mesin SmartBIN', style: context.text.headlineLarge?.copyWith(color: p.textPrimary)),
             const SizedBox(height: 4),
-            Text('Pemantauan status operasional & sensor mesin di kampus', style: context.text.bodyMedium?.copyWith(color: p.textMuted)),
+            Text('Pemantauan status operasional & sensor mesin', style: context.text.bodyMedium?.copyWith(color: p.textMuted)),
             if (online != null) ...[
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
-                child: StatusPill(label: '$online dari ${machines.value!.length} unit online', dot: true),
+                child: StatusPill(label: '$online dari ${visibleMachines!.length} unit online', dot: true),
               ),
             ],
             const SizedBox(height: 16),
@@ -59,11 +60,11 @@ class MachinesScreen extends ConsumerWidget {
               AsyncValue(:final value?) when value.isEmpty => const EmptyView(
                 icon: Icons.delete_sweep_outlined,
                 title: 'Belum ada mesin',
-                message: 'Mesin SmartBIN belum terdaftar di kampus Anda.',
+                message: 'Mesin SmartBIN belum tersedia.',
               ),
               AsyncValue(:final value?) => Column(
                 children: [
-                  for (final m in value)
+                  for (final m in value.take(1))
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: MachineCard(machine: m),
@@ -77,7 +78,7 @@ class MachinesScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             SectionCard(
               padding: const EdgeInsets.all(16),
-              onTap: () => showSnack(context, 'Laporan gangguan dikirim ke admin fasilitas kampus.'),
+              onTap: () => showSnack(context, 'Laporan gangguan dikirim ke admin SmartBIN.'),
               child: Row(
                 children: [
                   IconTile(icon: Icons.support_agent, background: p.warningSoft, foreground: p.warning),
@@ -87,7 +88,7 @@ class MachinesScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Punya kendala pada mesin?', style: context.text.titleMedium?.copyWith(color: p.textSecondary)),
-                        Text('Laporkan gangguan ke admin fasilitas kampus.', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                        Text('Laporkan gangguan ke admin SmartBIN.', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
                       ],
                     ),
                   ),
@@ -130,21 +131,10 @@ class MachineCard extends StatelessWidget {
                       m.name,
                       style: context.text.headlineSmall?.copyWith(color: p.textPrimary, fontWeight: FontWeight.w700),
                     ),
-                    Text(m.campus, style: context.text.labelMedium?.copyWith(color: p.textMuted)),
                   ],
                 ),
               ),
               StatusPill(label: m.status.label, tone: machineTone(m.status), dot: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, size: 16, color: p.textMuted),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(m.location, style: context.text.bodySmall?.copyWith(color: p.textSecondary)),
-              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -281,7 +271,7 @@ class _QuickGuide extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     const steps = [
-      ('Tempelkan KTM Mahasiswa', 'Dekatkan KTM fisik ke modul RFID pembaca mesin sampai bunyi bip.'),
+      ('Tempelkan KTP', 'Dekatkan KTP fisik ke modul pembaca kartu mesin sampai bunyi bip.'),
       ('Masukkan Sampah ke Lubang Terbuka', 'Pilih lubang Organik atau Anorganik sesuai jenis sampah yang Anda bawa.'),
       ('Penimbangan Otomatis', 'Sensor load cell menimbang bobot sampah secara akurat dalam 3 detik.'),
       ('Poin Terkumpul Otomatis', 'Poin masuk dan tersinkronisasi ke akun aplikasi SmartBIN Anda.'),

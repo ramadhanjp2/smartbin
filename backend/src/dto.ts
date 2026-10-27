@@ -15,8 +15,8 @@ import {
 
 export class RegisterDto {
   @IsString()
-  @Matches(/^[A-Za-z0-9]{8,15}$/)
-  nim!: string;
+  @Matches(/^\d{16}$/)
+  nik!: string;
 
   @IsString()
   @MinLength(2)
@@ -25,7 +25,6 @@ export class RegisterDto {
 
   @IsEmail()
   @MaxLength(254)
-  @Matches(/^[^@\s]+@student\.polije\.ac\.id$/i)
   email!: string;
 
   @IsString()
@@ -37,6 +36,7 @@ export class RegisterDto {
 export class LoginDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(254)
   identifier!: string;
 
   @IsString()

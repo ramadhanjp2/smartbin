@@ -2,7 +2,7 @@ import 'dart:math';
 
 enum NfcAvailability { available, disabled, notSupported }
 
-/// Pembaca UID KTM lewat NFC. Implementasi nyata (mis. `flutter_nfc_kit`)
+/// Pembaca UID KTP lewat NFC. Implementasi nyata (mis. `flutter_nfc_kit`)
 /// cukup mengganti [MockNfcReader] di `nfcReaderProvider`.
 abstract class NfcReader {
   Future<NfcAvailability> availability();

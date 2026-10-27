@@ -105,7 +105,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   return const EmptyView(
                     icon: Icons.notifications_none,
                     title: 'Belum ada notifikasi',
-                    message: 'Notifikasi setoran, KTM, dan poin akan muncul di sini.',
+                    message: 'Notifikasi setoran, KTP, dan poin akan muncul di sini.',
                   );
                 }
                 return Column(
@@ -133,7 +133,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     child: Icon(Icons.tune, color: p.textPrimary),
                   ),
                   title: Text('Preferensi Notifikasi Push', style: context.text.labelLarge?.copyWith(color: p.textPrimary)),
-                  subtitle: Text('Peringatan setoran & KTM', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  subtitle: Text('Peringatan setoran & KTP', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
                   value: ref.watch(notificationSoundProvider),
                   onChanged: (v) => ref.read(notificationSoundProvider.notifier).set(v),
                 ),

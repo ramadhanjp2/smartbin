@@ -1,6 +1,6 @@
 # SmartBIN — Aplikasi Flutter dan Backend
 
-Aplikasi untuk mahasiswa melihat saldo poin dan riwayat setoran sampah dari mesin SmartBIN, menautkan KTM ke akun, dan memantau status mesin. Admin bisa memantau semua mesin dan mengatur nilai poin.
+Aplikasi publik untuk membuat akun dengan NIK dan email, melihat saldo poin/riwayat setoran, menautkan KTP ke akun, dan memantau mesin SmartBIN. Admin bisa memantau mesin dan mengatur nilai poin.
 
 Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, dan ikuti aturannya supaya kode kita tetap seragam dan tidak saling menimpa.
 
@@ -35,7 +35,7 @@ Kalau ada perbedaan, urutan prioritasnya adalah sebagai berikut:
 2. **Desain Google Stitch** — [design/stitch/](design/stitch/). Tiap layar punya screenshot (`.png`/`.jpg`) dan HTML Tailwind aslinya (`_code.html`). Pakai HTML-nya untuk melihat warna, ukuran, dan teks yang persis.
 3. **README ini** untuk aturan teknis dan konvensi kode.
 
-Kalau desain Stitch bertentangan dengan PRD, ikuti **PRD**. Contohnya, tab ke-4 navigasi bawah adalah **Profil** sesuai PRD, walaupun di beberapa desain tertulis "Tautkan KTM".
+Kalau desain Stitch bertentangan dengan PRD, ikuti **PRD**. Contohnya, tab ke-4 navigasi bawah adalah **Profil** sesuai PRD.
 
 Pemetaan layar ke file kode:
 
@@ -44,7 +44,7 @@ Pemetaan layar ke file kode:
 | S01 | Onboarding | – (dari PRD) | `features/onboarding/onboarding_screen.dart` |
 | S02 | Login | `09_Masuk_Akun` | `features/auth/login_screen.dart` |
 | S03 | Registrasi | `10_Registrasi_Mahasiswa` | `features/auth/register_screen.dart` |
-| S04 | Tautkan KTM | `01_Tautkan_KTM` | `features/card/link_ktm_screen.dart` |
+| S04 | Tautkan KTP | `01_Tautkan_KTM` | `features/card/link_ktp_screen.dart` |
 | S05 | Beranda | `08_Beranda`, `11_Memuat_Data` | `features/home/home_screen.dart` |
 | S06 | Riwayat | `05_Riwayat_Setoran` | `features/history/history_screen.dart` |
 | S07 | Detail setoran | `02_Detail_Transaksi_Setoran` | `features/history/deposit_detail_screen.dart` |
@@ -131,14 +131,14 @@ Mode mock memakai data dari [lib/data/mock_smartbin_repository.dart](lib/data/mo
 
 | Peran | Login | Kata sandi | Kondisi awal |
 | --- | --- | --- | --- |
-| Mahasiswa | `2106728190` atau `ramadhan@student.polije.ac.id` | `smartbin123` | KTM belum tertaut, saldo 1.450, ada 120 poin tertahan dari 2 setoran |
+| Pengguna demo | NIK `1234567890123456` atau email `ramadhan@example.com` | `smartbin123` | KTP belum tertaut, saldo 1.450, ada 120 poin tertahan dari 2 setoran |
 | Admin | `admin@smartbin.id` (pilih tab **Admin / Teknisi**) | `admin1234` | 4 mesin: Siap, Penuh, Gangguan, Offline |
 
 Skenario yang bisa dicoba:
 
 - **Gagal login:** sandi salah 5 kali akan mengunci login selama 5 menit.
-- **Tautkan KTM:** dari banner Beranda pilih Tautkan Sekarang, lalu Mulai Pindai NFC. Pembacaan disimulasikan 2 detik, lalu 120 poin tertahan masuk ke saldo.
-- **Registrasi baru:** setelah daftar, aplikasi langsung membuka Tautkan KTM ("Langkah 2 dari 2").
+- **Tautkan KTP:** dari banner Beranda pilih Tautkan Sekarang, lalu Mulai Pindai NFC. Pembacaan di aplikasi masih disimulasikan; mode mock mengkreditkan 120 poin tertahan.
+- **Registrasi baru:** daftar dengan NIK 16 digit, nama, email umum, dan kata sandi. Setelah daftar, aplikasi membuka layar tautkan KTP.
 - **Admin:** pilih Unit #04 yang berstatus Gangguan untuk mencoba tombol reset.
 
 ---
@@ -185,7 +185,7 @@ Aturan yang **tidak boleh dilanggar**:
 
 1. **Layar tidak boleh memanggil HTTP atau API langsung.** Layar hanya membaca provider, dan provider memanggil `SmartbinRepository`.
 2. **Aplikasi tidak menghitung poin sendiri** (NFR-04). Semua angka poin berasal dari API. Rumus di layar Detail Setoran hanya menampilkan data dari server.
-3. **UID KTM tidak boleh disimpan atau di-log** (NFR-08). UID dari NFC hanya diteruskan sekali ke `repository.linkCard(uid)`.
+3. **NIK dan UID kartu tidak boleh disimpan mentah atau di-log.** Backend menyimpan HMAC NIK/UID dengan secret berbeda; UID dari NFC hanya diteruskan sekali ke `repository.linkCard(uid)`.
 4. **Tidak ada rahasia di dalam aplikasi**: tidak ada API key broker MQTT dan tidak ada secret HMAC.
 5. **Aplikasi tidak bicara ke MQTT atau mesin.** Semua lewat backend REST.
 
@@ -217,7 +217,7 @@ Tambahkan paket baru hanya setelah **disepakati tim**, dan cek dulu kompatibilit
 | `notificationsProvider`, `unreadCountProvider` | notifikasi dan jumlah yang belum dibaca |
 | `themeModeProvider`, `onboardingSeenProvider`, `notificationSoundProvider` | preferensi perangkat |
 
-Setelah aksi tulis (misalnya tautkan KTM), muat ulang data dengan `ref.invalidate(xxxProvider)`.
+Setelah aksi tulis (misalnya tautkan KTP), muat ulang data dengan `ref.invalidate(xxxProvider)`.
 
 ---
 
@@ -369,7 +369,7 @@ flutter build apk --dart-define=API_BASE_URL=https://api-smartbin.ramadhanjp.my.
 
 Token akses dan refresh disimpan menggunakan `flutter_secure_storage`, lalu sesi dicoba dipulihkan saat aplikasi dibuka kembali. Android release hanya mengizinkan koneksi HTTPS; HTTP cleartext untuk alamat lokal diaktifkan **khusus manifest debug**, bukan APK release. Untuk HP fisik, pastikan backend mendengarkan di `0.0.0.0`, firewall membuka port API, dan HP berada pada jaringan yang dapat menjangkau komputer. Chrome juga memerlukan konfigurasi CORS backend yang mengizinkan origin aplikasi.
 
-API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. NFC masih memakai pembaca mock, sehingga jangan gunakan fitur tautkan KTM untuk data produksi sampai pembaca NFC asli terpasang. Endpoint telemetri detail dan push FCM juga belum tersedia di MVP backend.
+API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. NFC di aplikasi masih memakai pembaca mock; integrasi baca kartu pada ponsel/penautan UID ke akun produksi belum selesai. Mesin perlu mengirim UID KTP yang sama dengan yang ditautkan ke backend. Endpoint telemetri detail dan push FCM juga belum tersedia di MVP backend.
 
 ---
 
@@ -381,7 +381,7 @@ flutter test --update-goldens                  # perbarui screenshot di test/gol
 ```
 
 - `test/widget_test.dart` menguji format poin, kg, dan WIB.
-- `test/app_flow_test.dart` menjalankan alur nyata dengan repository mock: onboarding, login, semua tab, tautkan KTM, registrasi, admin, dan cek tidak ada layout terpotong di lebar 360 dp.
+- `test/app_flow_test.dart` menjalankan alur nyata dengan repository mock: onboarding, login NIK, semua tab, tautkan KTP, registrasi publik, admin, dan cek tidak ada layout terpotong di lebar 360 dp.
 - Screenshot di `test/goldens/` dipakai sebagai **acuan visual**. Kalau kamu sengaja mengubah tampilan, jalankan `--update-goldens` dan sertakan PNG yang berubah di commit supaya teman bisa melihat perubahannya. Screenshot ini memakai font Roboto, jadi wajar kalau berbeda sedikit dari aplikasi asli.
 
 Aturan: **jangan push kode yang membuat test gagal.** Kalau test perlu diubah karena perilaku memang berubah, jelaskan alasannya di pesan commit.
@@ -458,7 +458,7 @@ Perbarui tabel ini setiap kali menyelesaikan atau mulai mengerjakan sesuatu, sup
 
 ## Backend NestJS + MySQL
 
-Backend berada di [`backend/`](backend/), menggunakan NestJS, TypeORM, dan MySQL 8.4. API memakai prefix `/api/v1`; endpoint kesehatan tersedia di `GET /api/v1/health`. Versi ini menyediakan autentikasi JWT + rotasi refresh token, profil, tautkan/lepas KTM, saldo/riwayat, nilai poin, daftar mesin, notifikasi, administrasi nilai poin/reset mesin, serta endpoint aman untuk ingest setoran dan status mesin.
+Backend berada di [`backend/`](backend/), menggunakan NestJS, TypeORM, dan MySQL 8.4. API memakai prefix `/api/v1`; endpoint kesehatan tersedia di `GET /api/v1/health`. Registrasi publik memakai NIK 16 digit dan email umum; login menerima NIK atau email. NIK disimpan sebagai HMAC berkunci, bukan teks asli. Akun lama tetap bisa login menggunakan NIM/email. Backend menyediakan JWT + rotasi refresh token, profil, tautkan/lepas KTP, saldo/riwayat, nilai poin, daftar mesin, notifikasi, administrasi, dan ingest mesin.
 
 ### Menjalankan lokal (Windows PowerShell)
 
@@ -472,7 +472,7 @@ npm install
 npm run start:dev
 ```
 
-Edit `backend/.env` sebelum menjalankan aplikasi. Ganti `JWT_ACCESS_SECRET`, `CARD_HMAC_SECRET`, dan `MACHINE_API_KEY` dengan nilai acak yang berbeda; jangan commit `.env`. Database `smartbin` mesti tersedia sebelum NestJS mulai. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; gunakan skema/migrasi yang telah ditinjau. Seed nilai poin awal dan satu mesin demo:
+Edit `backend/.env` sebelum menjalankan aplikasi. Ganti `JWT_ACCESS_SECRET`, `CARD_HMAC_SECRET`, `NIK_HMAC_SECRET`, dan `MACHINE_API_KEY` dengan nilai acak yang berbeda; jangan commit `.env`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Database `smartbin` mesti tersedia sebelum NestJS mulai. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) sekali pada database agar kolom NIK hash tersedia dan NIM lama menjadi nullable. Seed nilai poin awal dan satu mesin demo:
 
 ```powershell
 Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -psmartbin smartbin
@@ -508,14 +508,14 @@ Contoh registrasi:
 
 ```json
 {
-    "nim": "E32253079",
-  "name": "Nama Mahasiswa",
-    "email": "mahasiswa@student.polije.ac.id",
+  "nik": "1234567890123456",
+  "name": "Nama Pengguna",
+  "email": "pengguna@example.com",
   "password": "kata-sandi-minimal-8"
 }
 ```
 
-NIM registrasi menerima 8–15 karakter alfanumerik dan dinormalisasi menjadi huruf kapital. Email registrasi wajib menggunakan domain `@student.polije.ac.id`.
+Registrasi memvalidasi NIK tepat 16 angka dan alamat email umum. Login menerima NIK atau email. NIK mentah hanya dikirim melalui HTTPS saat registrasi/login; server menghitung HMAC SHA-256 dan hanya menyimpan hasil hash. Response profil tidak pernah mengembalikan NIK. NIM pada response hanya untuk kompatibilitas akun lama.
 
 ### ERD
 
@@ -598,7 +598,7 @@ erDiagram
     }
 ```
 
-`point_ledger` menyimpan perubahan saldo sebagai audit trail; saldo dihitung dari jumlah `delta`. Setoran yang datang sebelum KTM tertaut disimpan `HELD`, lalu dikreditkan dan ditulis ke ledger dalam transaksi saat KTM tersebut ditautkan. Nilai poin dan rate yang dipakai saat transaksi ikut disimpan agar riwayat tidak berubah saat rate diperbarui.
+`point_ledger` menyimpan perubahan saldo sebagai audit trail; saldo dihitung dari jumlah `delta`. Setoran yang datang sebelum KTP tertaut disimpan `HELD`, lalu dikreditkan dan ditulis ke ledger dalam transaksi saat kartu ditautkan. Nilai poin dan rate yang dipakai saat transaksi ikut disimpan agar riwayat tidak berubah saat rate diperbarui.
 
 ### Batas MVP backend
 

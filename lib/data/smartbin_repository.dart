@@ -6,14 +6,14 @@ abstract class SmartbinRepository {
   // Akun
   Future<AppUser?> restoreSession();
   Future<AppUser> login({required String identifier, required String password, required bool asAdmin});
-  Future<AppUser> register({required String nim, required String name, required String email, required String password});
+  Future<AppUser> register({required String nik, required String name, required String email, required String password});
   Future<void> logout();
   Future<AppUser> me();
   Future<AppUser> updateName(String name);
   Future<void> changePassword({required String oldPassword, required String newPassword});
 
-  // KTM
-  /// UID dari NFC dikirim sekali ke `/cards/link`; tidak disimpan di ponsel.
+  // KTP
+  /// UID kartu dari NFC dikirim sekali ke `/cards/link`; tidak disimpan di ponsel.
   Future<LinkResult> linkCard(String uid);
   Future<void> unlinkCard(String password);
 
