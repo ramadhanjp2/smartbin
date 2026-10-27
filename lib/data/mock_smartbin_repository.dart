@@ -234,6 +234,9 @@ class MockSmartbinRepository implements SmartbinRepository {
   // ---------------- Akun ----------------
 
   @override
+  Future<AppUser?> restoreSession() async => _session;
+
+  @override
   Future<AppUser> login({required String identifier, required String password, required bool asAdmin}) async {
     await _delay();
     final lockedUntil = _lockedUntil;

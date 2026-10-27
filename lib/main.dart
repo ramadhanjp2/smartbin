@@ -1,18 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/models.dart';
 import 'state/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
   final prefs = await SharedPreferences.getInstance();
-  runApp(ProviderScope(overrides: [sharedPrefsProvider.overrideWithValue(prefs)], child: const SmartbinApp()));
+  final container = ProviderContainer(overrides: [sharedPrefsProvider.overrideWithValue(prefs)]);
+  runApp(UncontrolledProviderScope(container: container, child: const SmartbinApp()));
+  unawaited(_restoreSession(container));
+}
+
+Future<void> _restoreSession(ProviderContainer container) async {
+  try {
+    await container.read(authProvider.notifier).restoreSession();
+  } on AppException catch (error) {
+    debugPrint('SmartBIN session restore failed: ${error.message}');
+  } on PlatformException catch (error) {
+    debugPrint('SmartBIN secure session storage unavailable: ${error.code}');
+  }
 }
 
 class SmartbinApp extends ConsumerWidget {

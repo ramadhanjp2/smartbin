@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/api_smartbin_repository.dart';
 import '../data/mock_smartbin_repository.dart';
 import '../data/models.dart';
 import '../data/nfc_reader.dart';
@@ -10,7 +13,21 @@ import '../data/smartbin_repository.dart';
 /// Di-override di `main()` setelah SharedPreferences siap.
 final sharedPrefsProvider = Provider<SharedPreferences>((ref) => throw UnimplementedError());
 
-final repositoryProvider = Provider<SmartbinRepository>((ref) => MockSmartbinRepository());
+final secureStorageProvider = Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
+
+final apiHttpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return client;
+});
+
+const _useMockRepository = bool.fromEnvironment('SMARTBIN_USE_MOCK', defaultValue: false);
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: defaultSmartbinApiUrl);
+
+final repositoryProvider = Provider<SmartbinRepository>((ref) {
+  if (_useMockRepository) return MockSmartbinRepository();
+  return ApiSmartbinRepository(baseUrl: _apiBaseUrl, client: ref.watch(apiHttpClientProvider), secureStorage: ref.watch(secureStorageProvider));
+});
 
 final nfcReaderProvider = Provider<NfcReader>((ref) => MockNfcReader());
 
@@ -82,6 +99,11 @@ class AuthController extends Notifier<AuthState> {
     state = AuthState(user: user);
   }
 
+  Future<void> restoreSession() async {
+    final user = await _repo.restoreSession();
+    if (user != null) state = AuthState(user: user);
+  }
+
   Future<void> register({required String nim, required String name, required String email, required String password}) async {
     final user = await _repo.register(nim: nim, name: name, email: email, password: password);
     _invalidateUserData();
@@ -93,9 +115,12 @@ class AuthController extends Notifier<AuthState> {
   void setUser(AppUser user) => state = AuthState(user: user, needsCardSetup: state.needsCardSetup);
 
   Future<void> logout() async {
-    await _repo.logout();
-    _invalidateUserData();
-    state = const AuthState();
+    try {
+      await _repo.logout();
+    } finally {
+      _invalidateUserData();
+      state = const AuthState();
+    }
   }
 
   /// Cache data pengguna dibersihkan saat logout / ganti akun (FR-AUTH-04).

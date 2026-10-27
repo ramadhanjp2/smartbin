@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pemetaan implementasi SmartBIN terhadap 56 acara BKPM Workshop Aplikasi Mobile Berbasis Flutter.">
+  <title>Pemetaan SmartBIN ke Modul Workshop Flutter</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #173a2a;
+      --muted: #587065;
+      --green: #1b5e20;
+      --green-2: #2e7d32;
+      --mint: #e8f5e9;
+      --paper: #f5faf5;
+      --line: #d7e6d9;
+      --white: #fff;
+      --blue: #175c83;
+      --blue-bg: #e8f4fa;
+      --amber: #805100;
+      --amber-bg: #fff3d8;
+      --red: #8b3030;
+      --red-bg: #fff0ef;
+      --shadow: 0 14px 40px rgb(22 61 39 / 8%);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.65 "Segoe UI", Arial, sans-serif;
+    }
+
+    a { color: var(--green); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: #0e4216; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 58px max(24px, calc((100% - 1120px) / 2)) 48px;
+      color: white;
+      background: linear-gradient(120deg, #123f21, #1b5e20 58%, #378647);
+    }
+
+    .hero::after {
+      position: absolute;
+      right: -85px;
+      bottom: -240px;
+      width: 460px;
+      height: 460px;
+      border: 1px solid rgb(255 255 255 / 16%);
+      border-radius: 50%;
+      box-shadow: 0 0 0 42px rgb(255 255 255 / 5%), 0 0 0 90px rgb(255 255 255 / 4%);
+      content: "";
+    }
+
+    .hero-inner { position: relative; z-index: 1; max-width: 1120px; margin: auto; }
+    .eyebrow { margin: 0 0 10px; color: #c9e8ca; font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 850px; margin: 0; font-size: clamp(2.1rem, 5vw, 3.65rem); line-height: 1.08; letter-spacing: -.04em; }
+    .hero p { max-width: 760px; margin: 20px 0 0; color: #e7f2e7; font-size: 1.08rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .hero-meta span { padding: 7px 12px; border: 1px solid rgb(255 255 255 / 25%); border-radius: 999px; background: rgb(255 255 255 / 9%); font-size: .88rem; }
+
+    .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 28px; max-width: 1320px; margin: 30px auto; padding: 0 24px; }
+    .sidebar { position: sticky; top: 20px; align-self: start; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--white); box-shadow: var(--shadow); }
+    .sidebar strong { display: block; margin: 0 0 8px; }
+    .sidebar a { display: block; padding: 7px 8px; border-radius: 8px; color: var(--muted); font-size: .92rem; text-decoration: none; }
+    .sidebar a:hover { background: var(--mint); color: var(--green); }
+    main { min-width: 0; }
+
+    section { scroll-margin-top: 18px; margin: 0 0 24px; padding: clamp(20px, 3vw, 32px); border: 1px solid var(--line); border-radius: 20px; background: var(--white); box-shadow: var(--shadow); }
+    h2 { margin: 0 0 14px; font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -.025em; }
+    h3 { margin: 23px 0 8px; font-size: 1.12rem; }
+    p { margin: 10px 0; }
+    .lead { max-width: 880px; color: var(--muted); font-size: 1.04rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+    .stat { padding: 15px; border-radius: 14px; background: var(--mint); }
+    .stat strong { display: block; color: var(--green); font-size: 1.55rem; line-height: 1.2; }
+    .stat span { color: var(--muted); font-size: .85rem; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 9px; margin: 18px 0 4px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+    .direct { color: var(--green); background: var(--mint); }
+    .partial { color: var(--amber); background: var(--amber-bg); }
+    .missing { color: var(--red); background: var(--red-bg); }
+    .extra { color: var(--blue); background: var(--blue-bg); }
+
+    .note { margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--green-2); border-radius: 8px; background: #f1f8f2; }
+    .note.warning { border-color: #d39a23; background: #fff9eb; }
+    .note p:first-child { margin-top: 0; }
+    .note p:last-child { margin-bottom: 0; }
+
+    .table-wrap { overflow-x: auto; margin: 16px 0 4px; border: 1px solid var(--line); border-radius: 14px; }
+    table { width: 100%; border-collapse: collapse; min-width: 850px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #315343; background: #f1f8f2; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; }
+    td { font-size: .93rem; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfefb; }
+    td:first-child { min-width: 130px; font-weight: 800; }
+    td:nth-child(2) { min-width: 210px; }
+    td:nth-child(3) { min-width: 250px; }
+    td:last-child { min-width: 145px; }
+    .pages { display: block; margin-top: 4px; color: var(--muted); font-size: .82rem; font-weight: 500; }
+    .code-links a { display: inline-block; margin: 2px 6px 2px 0; font-family: Consolas, monospace; font-size: .82rem; }
+    code { padding: .12em .4em; border-radius: 5px; background: #eef4ef; font: .9em Consolas, monospace; overflow-wrap: anywhere; }
+    ul, ol { padding-left: 22px; }
+    li { margin: 6px 0; }
+
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+    .card { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: #fcfefc; }
+    .card h3 { margin: 0 0 8px; }
+    .card p { color: var(--muted); font-size: .94rem; }
+    .card .tag { margin-top: 5px; }
+
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 18px 0; }
+    .flow span { padding: 8px 11px; border: 1px solid var(--line); border-radius: 10px; background: #f6fbf6; font-size: .9rem; font-weight: 700; }
+    .flow b { color: var(--green-2); }
+
+    .search { width: 100%; max-width: 480px; margin: 10px 0 14px; padding: 11px 13px; border: 1px solid #bfd4c2; border-radius: 10px; font: inherit; }
+    .search:focus { outline: 3px solid #b9dfbd; border-color: var(--green-2); }
+    .filtered-out { display: none; }
+
+    footer { max-width: 1320px; margin: 0 auto; padding: 0 24px 36px; color: var(--muted); font-size: .9rem; }
+    .footer-box { padding: 18px 22px; border-top: 1px solid var(--line); }
+
+    @media (max-width: 850px) {
+      .layout { display: block; margin-top: 18px; }
+      .sidebar { position: static; margin-bottom: 18px; }
+      .sidebar nav { display: flex; flex-wrap: wrap; gap: 3px; }
+      .sidebar a { padding-inline: 9px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .hero { padding: 38px 20px; }
+      .layout { padding: 0 12px; }
+      section { padding: 18px; border-radius: 15px; }
+      .cards { grid-template-columns: 1fr; }
+      .stats { gap: 8px; }
+      .stat { padding: 12px; }
+      footer { padding-inline: 12px; }
+    }
+
+    @media print {
+      body { background: white; font-size: 10pt; }
+      .hero { padding: 25px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .hero::after, .sidebar, .search { display: none; }
+      .layout { display: block; max-width: none; margin: 12px 0; padding: 0; }
+      section { break-inside: avoid; margin-bottom: 12px; padding: 16px; box-shadow: none; }
+      .table-wrap { overflow: visible; }
+      table { min-width: 0; font-size: 8pt; }
+      th, td { padding: 7px; }
+      a { color: inherit; }
+      footer { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Analisis kurikulum · BKPM TKK30708</p>
+      <h1>Pemetaan Project SmartBIN ke Modul Workshop Flutter</h1>
+      <p>Laporan ini menunjukkan bagian project SmartBIN yang mempraktikkan materi BKPM, mana yang merupakan padanan Flutter dari konsep Android, serta topik yang belum diterapkan atau merupakan pengayaan di luar modul.</p>
+      <div class="hero-meta">
+        <span>Workshop Aplikasi Mobile Berbasis Flutter</span>
+        <span>Semester 3 · 2026</span>
+        <span>Project Flutter + backend NestJS/MySQL</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" aria-label="Navigasi laporan">
+      <strong>Isi laporan</strong>
+      <nav>
+        <a href="#ringkasan">Ringkasan</a>
+        <a href="#cara-baca">Cara membaca</a>
+        <a href="#pemetaan">Pemetaan 56 acara</a>
+        <a href="#pengayaan">Materi tambahan</a>
+        <a href="#belum">Belum / parsial</a>
+        <a href="#contoh">Jalur belajar dari kode</a>
+        <a href="#sumber">Sumber &amp; batasan</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section id="ringkasan">
+        <h2>Ringkasan eksekutif</h2>
+        <p class="lead">Project SmartBIN menggabungkan hampir semua kelompok materi yang menjadi bekal project akhir pada BKPM: workflow Git, lingkungan Flutter, desain UI dan layout, list, modularisasi widget, navigasi, penyimpanan preferensi, JSON, serta komunikasi HTTP. Implementasinya memperluas latihan mobile dengan backend REST dan database server.</p>
+        <div class="stats" aria-label="Ringkasan cakupan">
+          <div class="stat"><strong>56</strong><span>acara praktikum dalam BKPM</span></div>
+          <div class="stat"><strong>12</strong><span>kelompok materi dipetakan</span></div>
+          <div class="stat"><strong>Flutter</strong><span>aplikasi mobile lintas platform</span></div>
+          <div class="stat"><strong>Tambahan</strong><span>NestJS, MySQL, JWT, Riverpod</span></div>
+        </div>
+        <div class="flow" aria-label="Aliran aplikasi">
+          <span>Layar Flutter</span><b>→</b><span>Riverpod</span><b>→</b><span>Repository</span><b>→</b><span>REST API</span><b>→</b><span>NestJS + MySQL</span>
+        </div>
+        <div class="note">
+          <strong>Kesimpulan singkat:</strong>
+          <p>SmartBIN bukan hanya contoh tampilan Flutter. Kode aplikasi menunjukkan penerapan materi workshop dari UI hingga HTTP, sedangkan backend NestJS, MySQL, autentikasi token, dan model bisnis SmartBIN merupakan materi pengayaan. Beberapa bahasan BKPM—khususnya GPS, sensor ponsel, SQLite, pengelolaan file, dan URL Launcher—belum diwujudkan secara langsung.</p>
+        </div>
+      </section>
+
+      <section id="cara-baca">
+        <h2>Cara membaca status</h2>
+        <p>Nomor acara dan rentang halaman di bawah mengikuti daftar isi PDF BKPM. Link file menunjuk ke contoh implementasi nyata di repository. “Padanan” berarti konsepnya sama tetapi API Flutter atau teknologinya berbeda dari contoh modul.</p>
+        <div class="legend">
+          <span class="tag direct">Sesuai modul</span>
+          <span class="tag partial">Sebagian / padanan</span>
+          <span class="tag missing">Belum diterapkan</span>
+          <span class="tag extra">Materi tambahan</span>
+        </div>
+        <div class="note warning">
+          <strong>Catatan penilaian:</strong>
+          <p>Status mengacu pada source code yang tersedia di project ini, bukan klaim bahwa setiap langkah praktikum pernah dikerjakan. Misalnya, keberadaan repository Git membuktikan project dikelola dengan Git, tetapi tidak membuktikan seluruh latihan Git pada Acara 1–4 diselesaikan persis seperti lembar kerja.</p>
+        </div>
+      </section>
+
+      <section id="pemetaan">
+        <h2>Pemetaan materi ke bagian project</h2>
+        <p class="lead">Semua 56 acara dikelompokkan sesuai urutan materi dalam BKPM. Gunakan pencarian untuk menemukan topik atau file tertentu.</p>
+        <input id="moduleSearch" class="search" type="search" placeholder="Cari topik, acara, fitur, atau file..." aria-label="Cari pada tabel pemetaan">
+        <div class="table-wrap">
+          <table id="mappingTable">
+            <thead>
+              <tr>
+                <th>Acara &amp; halaman PDF</th>
+                <th>Materi modul</th>
+                <th>Bagian SmartBIN yang terkait</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1–4<span class="pages">Hlm. 13–20</span></td>
+                <td>Pengenalan dan workflow pada Git</td>
+                <td>Project berada di repository GitHub, memiliki riwayat commit dan branch fitur. Pekerjaan backend dikerjakan di branch terpisah sebelum Pull Request. Ini bukti workflow project, bukan fitur runtime di aplikasi.
+                  <div class="code-links"><a href="../README.md#alur-kerja-tim">README · alur kerja tim</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai modul</span></td>
+              </tr>
+              <tr>
+                <td>5–8<span class="pages">Hlm. 21–31</span></td>
+                <td>Pengenalan dan instalasi Flutter SDK dan Android Studio</td>
+                <td>Project dikonfigurasi sebagai aplikasi Flutter/Dart, dengan target Android dan platform lain. Versi Flutter/Dart, perintah pub, emulator, izin internet, dan proses build dicatat di panduan kerja.
+                  <div class="code-links"><a href="../pubspec.yaml">pubspec.yaml</a> <a href="../android/app/src/main/AndroidManifest.xml">AndroidManifest.xml</a> <a href="../README.md#menyiapkan-lingkungan">README · lingkungan</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai modul</span></td>
+              </tr>
+              <tr>
+                <td>9–12<span class="pages">Hlm. 32–54</span></td>
+                <td>Layout, Material Design dan scroll view</td>
+                <td>Layar disusun dari widget Material, kartu, form, list, tombol, dialog, serta pola loading/error. Tema Material 3 mendefinisikan palet, tipografi, bentuk, mode terang/gelap; layar panjang memakai scroll view.
+                  <div class="code-links"><a href="../lib/core/theme/app_theme.dart">app_theme.dart</a> <a href="../lib/core/widgets/common.dart">common.dart</a> <a href="../lib/features/home/home_screen.dart">home_screen.dart</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai modul</span></td>
+              </tr>
+              <tr>
+                <td>13–16<span class="pages">Hlm. 55–66</span></td>
+                <td>Activity / ListView Builder (padanan RecyclerView)</td>
+                <td>Daftar setoran, status mesin, notifikasi dan ringkasan admin dibangun sebagai daftar Flutter yang dapat discroll. Detail setoran dibuka dari item riwayat. “Activity” Android bukan kelas yang dipakai langsung; layar Flutter memegang peran halaman.
+                  <div class="code-links"><a href="../lib/features/history/history_screen.dart">history_screen.dart</a> <a href="../lib/features/history/deposit_tile.dart">deposit_tile.dart</a> <a href="../lib/features/machines/machines_screen.dart">machines_screen.dart</a> <a href="../lib/features/notifications/notifications_screen.dart">notifications_screen.dart</a></div>
+                </td>
+                <td><span class="tag partial">Padanan Flutter</span></td>
+              </tr>
+              <tr>
+                <td>17–20<span class="pages">Hlm. 67–80</span></td>
+                <td>Fragment (widget modular)</td>
+                <td>UI dipecah menjadi screen per fitur dan widget privat untuk bagian layar; komponen lintas fitur diletakkan di <code>core/widgets</code>. Ini sejalan dengan modularisasi, bukan memakai Android Fragment.
+                  <div class="code-links"><a href="../lib/features/">lib/features/</a> <a href="../lib/core/widgets/common.dart">common.dart</a> <a href="../lib/features/auth/auth_widgets.dart">auth_widgets.dart</a></div>
+                </td>
+                <td><span class="tag partial">Padanan Flutter</span></td>
+              </tr>
+              <tr>
+                <td>21–24<span class="pages">Hlm. 81–92</span></td>
+                <td>Intent (Navigator dan URL Launcher)</td>
+                <td>Perpindahan halaman menggunakan <code>go_router</code>, navigasi tab dan deep route, serta <code>Navigator</code> untuk dialog. Ini meliputi navigasi internal, tetapi pemanggilan aplikasi lain/URL melalui URL Launcher belum menjadi fitur.
+                  <div class="code-links"><a href="../lib/core/router/app_router.dart">app_router.dart</a> <a href="../lib/core/router/main_shell.dart">main_shell.dart</a> <a href="../lib/features/profile/profile_screen.dart">profile_screen.dart</a></div>
+                </td>
+                <td><span class="tag partial">Sebagian</span></td>
+              </tr>
+              <tr>
+                <td>25–28<span class="pages">Hlm. 93–115</span></td>
+                <td>Manajemen file pada Flutter dan SQLite</td>
+                <td>Tidak ditemukan implementasi SQLite, file picker, atau penyimpanan berkas aplikasi. Preferensi kecil disimpan dengan SharedPreferences; data bisnis disimpan di MySQL server. MySQL bukan pengganti latihan SQLite lokal karena lokasi dan tanggung jawab datanya berbeda.
+                  <div class="code-links"><a href="../lib/main.dart">main.dart</a> <a href="../lib/state/providers.dart">providers.dart</a> <a href="../backend/src/entities/">backend entities</a></div>
+                </td>
+                <td><span class="tag missing">Belum / beda teknologi</span></td>
+              </tr>
+              <tr>
+                <td>29–32<span class="pages">Hlm. 116–129</span></td>
+                <td>Shared Preferences</td>
+                <td>SharedPreferences menyimpan pilihan tema, status onboarding, suara notifikasi, dan cache nilai poin terakhir. Token akses/refresh tidak disimpan di sini; token menggunakan secure storage sebagai pengayaan keamanan.
+                  <div class="code-links"><a href="../lib/state/providers.dart">providers.dart</a> <a href="../lib/main.dart">main.dart</a> <a href="../lib/data/api_smartbin_repository.dart">api_smartbin_repository.dart</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai + pengayaan</span></td>
+              </tr>
+              <tr>
+                <td>33–36<span class="pages">Hlm. 130–155</span></td>
+                <td>GPS dan akses sensor</td>
+                <td>Project tidak meminta lokasi GPS dan belum membaca sensor fisik ponsel. NFC KTM masih memakai <code>MockNfcReader</code>; data kapasitas tong/suhu datang dari model/status mesin di backend, bukan pembacaan sensor Flutter.
+                  <div class="code-links"><a href="../lib/data/nfc_reader.dart">nfc_reader.dart</a> <a href="../lib/data/models.dart">models.dart</a> <a href="../lib/features/machines/machines_screen.dart">machines_screen.dart</a></div>
+                </td>
+                <td><span class="tag missing">Belum / mock hardware</span></td>
+              </tr>
+              <tr>
+                <td>37–40<span class="pages">Hlm. 156–173</span></td>
+                <td>Pengenalan JSON dan pengambilan/pengujian API</td>
+                <td>Repository API membaca JSON response dan mengubahnya ke model Dart, sementara request body dikodekan sebagai JSON. Bentuk request/respons backend menjadi kontrak integrasi. Penggunaan Postman bergantung pada proses pengujian tim, bukan bagian yang dapat dibuktikan dari source Flutter.
+                  <div class="code-links"><a href="../lib/data/api_smartbin_repository.dart">api_smartbin_repository.dart</a> <a href="../lib/data/models.dart">models.dart</a> <a href="../backend/src/dto.ts">backend DTO</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai modul</span></td>
+              </tr>
+              <tr>
+                <td>41–44<span class="pages">Hlm. 174–201</span></td>
+                <td>Dio / HTTP GET dan POST</td>
+                <td>HTTP dilakukan melalui paket <code>http</code>, bukan Dio. Repository mengirim GET/POST serta PATCH/PUT/DELETE, menambahkan header autentikasi, menangani timeout/error, dan melakukan refresh token. Pemetaan ini merupakan praktik langsung materi HTTP dengan perluasan metode dan auth.
+                  <div class="code-links"><a href="../lib/data/api_smartbin_repository.dart">api_smartbin_repository.dart</a> <a href="../pubspec.yaml">pubspec.yaml · http</a> <a href="../lib/data/smartbin_repository.dart">smartbin_repository.dart</a></div>
+                </td>
+                <td><span class="tag partial">HTTP sesuai, Dio tidak dipakai</span></td>
+              </tr>
+              <tr>
+                <td>45–56<span class="pages">Hlm. 202–226</span></td>
+                <td>Project final: studi kasus, observasi, prototype, validasi, use case, database, implementasi, dokumentasi, presentasi</td>
+                <td>SmartBIN merupakan project terintegrasi: kebutuhan dan desain dicatat di PRD, UI menjadi prototype Flutter, alur diuji dengan widget/integration-style tests, backend memiliki model database dan ERD, serta README mendokumentasikan setup dan batasan. Laporan observasi/presentasi perlu dilengkapi oleh tim sesuai artefak akademik yang diminta.
+                  <div class="code-links"><a href="../design/stitch/04_PRD_SmartBIN_Aplikasi_Mobile_Flutter_md_code.md">PRD</a> <a href="../test/app_flow_test.dart">app_flow_test.dart</a> <a href="../backend/docs/erd.mmd">ERD backend</a> <a href="../README.md">README</a></div>
+                </td>
+                <td><span class="tag direct">Sesuai sebagai project final</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="pengayaan">
+        <h2>Materi tambahan di luar pokok bahasan workshop</h2>
+        <p class="lead">Bagian berikut bukan pokok praktikum Flutter yang dinyatakan di BKPM. Bagian ini memperluas project ke praktik aplikasi produksi, server, keamanan, dan domain IoT.</p>
+        <div class="cards">
+          <article class="card">
+            <h3>State management dengan Riverpod</h3>
+            <p>Provider, notifier, future provider, invalidasi cache dan perubahan state auth mengatur data antar layar. Ini melampaui state lokal dasar pada widget.</p>
+            <a href="../lib/state/providers.dart"><code>lib/state/providers.dart</code></a>
+            <br><span class="tag extra">Pengayaan Flutter</span>
+          </article>
+          <article class="card">
+            <h3>Arsitektur Repository dan pemisahan lapisan</h3>
+            <p>Layar bergantung pada kontrak repository; mock dan API adalah implementasi data berbeda. Pemilihan API publik/lokal dilakukan dengan konfigurasi build.</p>
+            <a href="../lib/data/smartbin_repository.dart"><code>smartbin_repository.dart</code></a>
+            <br><span class="tag extra">Pengayaan arsitektur</span>
+          </article>
+          <article class="card">
+            <h3>Backend server dengan NestJS</h3>
+            <p>Controller, service, DTO validation, autentikasi dan API server berjalan di Node.js. BKPM ini berfokus pada client Flutter, bukan membangun backend NestJS.</p>
+            <a href="../backend/src/smartbin.controller.ts"><code>smartbin.controller.ts</code></a>
+            <br><span class="tag extra">Di luar modul</span>
+          </article>
+          <article class="card">
+            <h3>Database MySQL dan ORM</h3>
+            <p>TypeORM entity memodelkan user, KTM, mesin, setoran, ledger poin, rate, notifikasi, dan sesi. ERD serta transaksi database memperkaya materi database mobile.</p>
+            <a href="../backend/docs/erd.mmd"><code>backend/docs/erd.mmd</code></a>
+            <br><span class="tag extra">Di luar modul</span>
+          </article>
+          <article class="card">
+            <h3>Autentikasi dan keamanan API</h3>
+            <p>JWT access token, rotasi refresh token, bcrypt password, secure storage, validasi DTO, pembatasan laju dan pemeriksaan role admin di server.</p>
+            <a href="../lib/data/api_smartbin_repository.dart"><code>API client</code></a>
+            <a href="../backend/src/auth/access-token.guard.ts"><code>JWT guard</code></a>
+            <br><span class="tag extra">Pengayaan keamanan</span>
+          </article>
+          <article class="card">
+            <h3>Domain IoT dan ledger poin</h3>
+            <p>Setoran idempoten, status HELD/CREDITED, HMAC UID kartu, histori ledger serta endpoint ingest mesin mengajarkan aturan domain yang lebih kompleks dibanding demo API film.</p>
+            <a href="../backend/src/smartbin.service.ts"><code>smartbin.service.ts</code></a>
+            <br><span class="tag extra">Pengayaan domain</span>
+          </article>
+          <article class="card">
+            <h3>Desain adaptif, tema dan aksesibilitas</h3>
+            <p>Mode terang/gelap, text scale, skeleton/loading, empty/error state dan pengujian lebar layar memperluas implementasi Material Design.</p>
+            <a href="../lib/core/theme/app_theme.dart"><code>app_theme.dart</code></a>
+            <a href="../test/app_flow_test.dart"><code>app_flow_test.dart</code></a>
+            <br><span class="tag extra">Pengayaan kualitas UI</span>
+          </article>
+          <article class="card">
+            <h3>Format tanggal/angka dan lokalisasi</h3>
+            <p>Format poin Indonesia, berat kilogram, tanggal, dan konversi waktu UTC ke WIB dipusatkan di formatter agar tampilan konsisten.</p>
+            <a href="../lib/core/format/formatters.dart"><code>formatters.dart</code></a>
+            <br><span class="tag extra">Pengayaan implementasi produk</span>
+          </article>
+        </div>
+      </section>
+
+      <section id="belum">
+        <h2>Bagian yang masih belum atau baru sebagian</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Topik</th><th>Kondisi project</th><th>Yang perlu dibuat bila ingin dianggap tuntas</th></tr></thead>
+            <tbody>
+              <tr><td>File lokal &amp; SQLite</td><td>Belum ada operasi file/SQLite di aplikasi. MySQL berada di server dan tidak melatih SQLite lokal.</td><td>Tambahkan latihan terpisah: simpan draft/cache lokal ke SQLite, baca daftar, edit, hapus, dan jelaskan sinkronisasinya.</td></tr>
+              <tr><td>GPS / Maps</td><td>Tidak diminta untuk fitur MVP; layar mesin memakai lokasi yang berasal dari data API.</td><td>Jika masuk ruang lingkup, tambahkan permission, geolocation, peta, dan alur persetujuan privasi.</td></tr>
+              <tr><td>Akses sensor perangkat</td><td>NFC masih mock; status kapasitas sensor berasal dari server/mesin.</td><td>Implementasikan pembaca NFC asli pada perangkat didukung, tangani ketersediaan/izin dan uji hardware fisik.</td></tr>
+              <tr><td>Intent eksternal / URL Launcher</td><td>Navigasi internal sudah ada; membuka browser, telepon, atau aplikasi eksternal belum terlihat sebagai integrasi tersendiri.</td><td>Tambahkan contoh URL Launcher hanya bila ada kebutuhan produk, seperti membuka petunjuk lokasi eksternal.</td></tr>
+              <tr><td>Dio</td><td>Flutter memakai <code>http</code>; materi HTTP tetap terlihat, tetapi library Dio tidak digunakan.</td><td>Tidak wajib mengganti library. Untuk pembelajaran komparatif, implementasikan request contoh terisolasi memakai Dio dan bandingkan interceptor/error handling.</td></tr>
+              <tr><td>Push notification / FCM</td><td>Data notifikasi disediakan API; pengiriman push FCM belum dikonfigurasi.</td><td>Daftarkan token perangkat, konfigurasi FCM server-side dan alur pembaruan aplikasi.</td></tr>
+              <tr><td>MQTT langsung</td><td>Aplikasi tidak terhubung ke broker; desainnya mengirim data dari mesin/bridge ke backend, lalu Flutter memakai REST.</td><td>Jangan sambungkan aplikasi mobile ke credential broker mesin. MQTT bridge merupakan komponen backend/IoT terpisah.</td></tr>
+              <tr><td>Cache offline riwayat</td><td>Nilai rate disimpan lokal, tetapi cache riwayat 50 transaksi dan indikator offline penuh belum diterapkan.</td><td>Tambahkan database cache lokal dan kebijakan refresh/sinkronisasi tanpa mencampur cache dengan sumber saldo resmi.</td></tr>
+              <tr><td>Pengujian end-to-end integrasi</td><td>Ada test widget/alur UI dan unit backend; koneksi database/API nyata memerlukan environment pengujian khusus.</td><td>Tambahkan integration test dengan server/database test yang terisolasi dan data seed yang aman.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <strong>Prioritas yang disarankan:</strong>
+          <p>Untuk menunjukkan keterkaitan modul, prioritaskan bukti Acara 1–4, 9–24, 29–32, 37–44, dan 45–56. Untuk pembahasan jujur, sebutkan Acara 25–28 dan 33–36 sebagai belum diterapkan secara langsung, bukan menyamakan MySQL server dengan SQLite atau mock NFC dengan akses sensor asli.</p>
+        </div>
+      </section>
+
+      <section id="contoh">
+        <h2>Jalur presentasi: tunjukkan konsep modul lewat satu alur</h2>
+        <ol>
+          <li><strong>Workflow Git:</strong> tunjukkan repository, branch, dan riwayat commit sebagai bukti pengelolaan source code.</li>
+          <li><strong>Widget/material/layout:</strong> buka login, beranda, riwayat, dan mode tema; jelaskan widget tree serta komponen bersama.</li>
+          <li><strong>List dan modularisasi:</strong> buka daftar riwayat/mesin; telusuri screen → tile/widget → model.</li>
+          <li><strong>Navigasi:</strong> buka detail setoran dari list dan pindah tab menggunakan router.</li>
+          <li><strong>Shared Preferences:</strong> ubah tema atau onboarding lalu tunjukkan nilai preferensi tersimpan.</li>
+          <li><strong>JSON &amp; HTTP:</strong> tunjukkan request API, header auth, JSON parsing, dan pemetaan respons ke model Dart.</li>
+          <li><strong>Project final:</strong> tunjukkan PRD, test alur, backend, ERD, serta jelaskan kebutuhan bisnis SmartBIN.</li>
+          <li><strong>Materi yang belum ada:</strong> jelaskan batasan SQLite, GPS/sensor asli, NFC mock, push FCM dan MQTT tanpa mengklaim sudah selesai.</li>
+        </ol>
+        <div class="note warning">
+          <strong>Untuk demo API publik:</strong>
+          <p>Gunakan akun pengujian yang memang terdaftar pada server. Jangan tampilkan kata sandi, token, UID KTM mentah, atau data pribadi mahasiswa di layar presentasi maupun dokumentasi.</p>
+        </div>
+      </section>
+
+      <section id="sumber">
+        <h2>Sumber dan batasan pemetaan</h2>
+        <ul>
+          <li><strong>Materi:</strong> <a href="20261005_133633_9ac5ba17_BKPM_Workshop_Aplikasi_Mobile_Flutter.pdf">BKPM Workshop Aplikasi Mobile Berbasis Flutter, TKK30708, Semester 3, 2026</a>. Nomor halaman mengacu pada halaman cetak yang dicantumkan dalam daftar isi PDF.</li>
+          <li><strong>Source Flutter:</strong> folder <a href="../lib/">lib/</a>, <a href="../test/">test/</a>, konfigurasi <a href="../pubspec.yaml">pubspec.yaml</a> dan <a href="../android/app/src/">android/app/src/</a>.</li>
+          <li><strong>Dokumen project:</strong> <a href="../README.md">README project</a> dan <a href="../design/stitch/04_PRD_SmartBIN_Aplikasi_Mobile_Flutter_md_code.md">PRD SmartBIN</a>.</li>
+          <li><strong>Backend:</strong> folder <a href="../backend/src/">backend/src/</a> dan diagram <a href="../backend/docs/erd.mmd">ERD</a>.</li>
+        </ul>
+        <p>Dokumen ini adalah pemetaan berbasis inspeksi source dan struktur project, bukan rubrik penilaian resmi dosen. Pencocokan Acara 1–56 mengikuti kelompok materi dan nomor halaman di daftar isi; capaian praktikum setiap individu tetap perlu dibuktikan melalui proses kerja, demo, atau laporan masing-masing.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="footer-box">Pemetaan Project SmartBIN × BKPM Workshop Aplikasi Mobile Berbasis Flutter · Disusun untuk membantu penjelasan dan presentasi project.</div>
+  </footer>
+
+  <script>
+    const search = document.getElementById("moduleSearch");
+    const rows = [...document.querySelectorAll("#mappingTable tbody tr")];
+    search.addEventListener("input", () => {
+      const query = search.value.trim().toLocaleLowerCase("id");
+      for (const row of rows) {
+        row.classList.toggle("filtered-out", !row.textContent.toLocaleLowerCase("id").includes(query));
+      }
+    });
+  </script>
+</body>
+</html>
