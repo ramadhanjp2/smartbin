@@ -587,7 +587,11 @@ class _DemoHint extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              admin ? 'Mode demo · admin@smartbin.id / admin1234' : 'Demo NIK · 1234567890123456 / smartbin123',
+              useMockRepository
+                  ? admin
+                        ? 'Akun mock: admin@smartbin.id / admin1234'
+                        : 'Akun mock: NIK 1234567890123456 / smartbin123'
+                  : 'Mode API: gunakan akun terdaftar. Admin harus memiliki akses Admin / Teknisi.',
               style: context.text.bodySmall?.copyWith(color: p.textMuted),
             ),
           ),

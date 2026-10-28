@@ -21,11 +21,11 @@ final apiHttpClientProvider = Provider<http.Client>((ref) {
   return client;
 });
 
-const _useMockRepository = bool.fromEnvironment('SMARTBIN_USE_MOCK', defaultValue: false);
+const useMockRepository = bool.fromEnvironment('SMARTBIN_USE_MOCK', defaultValue: false);
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: defaultSmartbinApiUrl);
 
 final repositoryProvider = Provider<SmartbinRepository>((ref) {
-  if (_useMockRepository) return MockSmartbinRepository();
+  if (useMockRepository) return MockSmartbinRepository();
   return ApiSmartbinRepository(baseUrl: _apiBaseUrl, client: ref.watch(apiHttpClientProvider), secureStorage: ref.watch(secureStorageProvider));
 });
 

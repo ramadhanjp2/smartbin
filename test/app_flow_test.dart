@@ -142,6 +142,12 @@ void main() {
     expect(find.text('1.570'), findsOneWidget);
   });
 
+  testWidgets('login API menjelaskan syarat akun admin', (tester) async {
+    await _start(tester);
+    expect(find.text('Mode API: gunakan akun terdaftar. Admin harus memiliki akses Admin / Teknisi.'), findsOneWidget);
+    await _shot('01_login');
+  });
+
   testWidgets('registrasi publik baru diarahkan untuk menautkan KTP', (tester) async {
     await _start(tester);
     await tester.tap(find.text('Daftar Sekarang'));
@@ -174,6 +180,7 @@ void main() {
 
   testWidgets('admin masuk ke dashboard mesin', (tester) async {
     await _start(tester, size: const Size(390, 2600));
+    expect(find.text('Mode API: gunakan akun terdaftar. Admin harus memiliki akses Admin / Teknisi.'), findsOneWidget);
     await tester.tap(find.text('Admin / Teknisi'));
     await _settle(tester, frames: 3);
     await _login(tester, 'admin@smartbin.id', 'admin1234');
