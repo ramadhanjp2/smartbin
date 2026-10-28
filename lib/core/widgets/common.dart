@@ -130,12 +130,9 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: p.accentSoft, borderRadius: BorderRadius.circular(size * 0.3)),
-      child: Icon(Icons.recycling, color: p.brand, size: size * 0.6),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.2),
+      child: Image.asset('assets/images/smartbin-icon.png', width: size, height: size, fit: BoxFit.cover),
     );
   }
 }
