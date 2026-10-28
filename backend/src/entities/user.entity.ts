@@ -21,14 +21,20 @@ export class UserEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ unique: true, length: 32, nullable: true })
+  @Column({ type: "varchar", unique: true, length: 32, nullable: true })
   nim!: string | null;
 
   @Column({ unique: true, length: 254 })
   email!: string;
 
   @Index("uq_users_nik_hash", { unique: true })
-  @Column({ name: "nik_hash", length: 64, nullable: true, select: false })
+  @Column({
+    name: "nik_hash",
+    type: "varchar",
+    length: 64,
+    nullable: true,
+    select: false,
+  })
   nikHash!: string | null;
 
   @Column({ length: 120 })
@@ -55,9 +61,18 @@ export class UserEntity {
   @OneToMany(() => RefreshSessionEntity, (session) => session.user)
   sessions!: RefreshSessionEntity[];
 
-  @CreateDateColumn({ name: "created_at", precision: 3 })
+  @CreateDateColumn({
+    name: "created_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: "updated_at", precision: 3 })
+  @UpdateDateColumn({
+    name: "updated_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+    onUpdate: "CURRENT_TIMESTAMP(3)",
+  })
   updatedAt!: Date;
 }

@@ -460,19 +460,22 @@ Perbarui tabel ini setiap kali menyelesaikan atau mulai mengerjakan sesuatu, sup
 
 Backend berada di [`backend/`](backend/), menggunakan NestJS, TypeORM, dan MySQL 8.4. API memakai prefix `/api/v1`; endpoint kesehatan tersedia di `GET /api/v1/health`. Registrasi publik memakai NIK 16 digit dan email umum; login menerima NIK atau email. NIK disimpan sebagai HMAC berkunci, bukan teks asli. Akun lama tetap bisa login menggunakan NIM/email. Backend menyediakan JWT + rotasi refresh token, profil, tautkan/lepas KTP, saldo/riwayat, nilai poin, daftar mesin, notifikasi, administrasi, dan ingest mesin.
 
-### Menjalankan lokal (Windows PowerShell)
+### Menjalankan dengan Docker Compose
 
-Prasyarat: Node.js 20+, npm, dan Docker Desktop.
+Prasyarat: Docker Engine dan Docker Compose.
 
 ```powershell
 cd backend
 Copy-Item .env.example .env
-docker compose up -d
-npm install
-npm run start:dev
 ```
 
-Edit `backend/.env` sebelum menjalankan aplikasi. Ganti `JWT_ACCESS_SECRET`, `CARD_HMAC_SECRET`, `NIK_HMAC_SECRET`, dan `MACHINE_API_KEY` dengan nilai acak yang berbeda; jangan commit `.env`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Database `smartbin` mesti tersedia sebelum NestJS mulai. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) sekali pada database agar kolom NIK hash tersedia dan NIM lama menjadi nullable. Seed nilai poin awal dan satu mesin demo:
+Ganti seluruh nilai `replace-with-...` di `backend/.env` dengan secret unik. Jangan commit `.env`. Kemudian bangun dan jalankan API serta database:
+
+```powershell
+docker compose up --build -d
+```
+
+API tersedia di `http://localhost:3000/api/v1`; endpoint kesehatan di `/api/v1/health`. Lihat log API dengan `docker compose logs -f api`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) sekali pada database agar kolom NIK hash tersedia dan NIM lama menjadi nullable. Seed nilai poin awal dan satu mesin demo:
 
 ```powershell
 Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -psmartbin smartbin

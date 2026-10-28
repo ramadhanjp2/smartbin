@@ -51,9 +51,18 @@ export class MachineEntity {
   @OneToMany(() => DepositEntity, (deposit) => deposit.machine)
   deposits!: DepositEntity[];
 
-  @CreateDateColumn({ name: "created_at", precision: 3 })
+  @CreateDateColumn({
+    name: "created_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: "updated_at", precision: 3 })
+  @UpdateDateColumn({
+    name: "updated_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+    onUpdate: "CURRENT_TIMESTAMP(3)",
+  })
   updatedAt!: Date;
 }

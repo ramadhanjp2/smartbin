@@ -62,7 +62,11 @@ export class DepositEntity {
   @Column({ name: "device_time", type: "datetime", precision: 3 })
   deviceTime!: Date;
 
-  @CreateDateColumn({ name: "received_at", precision: 3 })
+  @CreateDateColumn({
+    name: "received_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   receivedAt!: Date;
 
   @Column({ type: "enum", enum: ["HELD", "CREDITED"], default: "HELD" })

@@ -16,6 +16,11 @@ export class RateEntity {
   })
   anorganikPerKg!: number;
 
-  @UpdateDateColumn({ name: "updated_at", precision: 3 })
+  @UpdateDateColumn({
+    name: "updated_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+    onUpdate: "CURRENT_TIMESTAMP(3)",
+  })
   updatedAt!: Date;
 }

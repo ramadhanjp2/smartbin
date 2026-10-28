@@ -20,6 +20,10 @@ export class CardEntity {
   @Column({ name: "uid_hash", unique: true, length: 64 })
   uidHash!: string;
 
-  @CreateDateColumn({ name: "linked_at", precision: 3 })
+  @CreateDateColumn({
+    name: "linked_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   linkedAt!: Date;
 }

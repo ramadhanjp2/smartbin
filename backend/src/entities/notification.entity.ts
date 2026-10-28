@@ -37,6 +37,10 @@ export class NotificationEntity {
   @Column({ name: "is_read", type: "boolean", default: false })
   isRead!: boolean;
 
-  @CreateDateColumn({ name: "created_at", precision: 3 })
+  @CreateDateColumn({
+    name: "created_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   createdAt!: Date;
 }

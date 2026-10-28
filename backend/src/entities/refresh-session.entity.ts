@@ -34,6 +34,10 @@ export class RefreshSessionEntity {
   })
   revokedAt!: Date | null;
 
-  @CreateDateColumn({ name: "created_at", precision: 3 })
+  @CreateDateColumn({
+    name: "created_at",
+    precision: 3,
+    default: () => "CURRENT_TIMESTAMP(3)",
+  })
   createdAt!: Date;
 }
