@@ -38,10 +38,40 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env}
       DB_DATABASE: ${DB_DATABASE:-smartbin}
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      MONGO_URI: mongodb://${MONGO_USERNAME:-smartbin}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DATABASE:-smartbin_realtime}?authSource=admin
+      MONGO_DATABASE: ${MONGO_DATABASE:-smartbin_realtime}
+      MONGO_TELEMETRY_TTL_SECONDS: ${MONGO_TELEMETRY_TTL_SECONDS:-7776000}
+      MQTT_URL: ${MQTT_URL:-}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID:-smartbin-api}
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_SUBSCRIBE_TOPIC: ${MQTT_SUBSCRIBE_TOPIC:-smartbin/+/telemetry/#}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
       mysql:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
+  mongodb:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-smartbin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in backend/.env}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-smartbin_realtime}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - smartbin_mongodb_data:/data/db
+      - smartbin_mongodb_config:/data/configdb
+    command: ["mongod", "--bind_ip_all", "--quiet"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 -u \"$${MONGO_INITDB_ROOT_USERNAME}\" -p \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval 'db.adminCommand({ping:1}).ok' | grep 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 volumes:
   smartbin_mysql_data:
+  smartbin_mongodb_data:
+  smartbin_mongodb_config:

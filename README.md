@@ -458,7 +458,7 @@ Perbarui tabel ini setiap kali menyelesaikan atau mulai mengerjakan sesuatu, sup
 
 ## Backend NestJS + MySQL
 
-Backend berada di [`backend/`](backend/), menggunakan NestJS, TypeORM, dan MySQL 8.4. API memakai prefix `/api/v1`; endpoint kesehatan tersedia di `GET /api/v1/health`. Registrasi publik memakai NIK 16 digit dan email umum; login menerima NIK atau email. NIK disimpan sebagai HMAC berkunci, bukan teks asli. Akun lama tetap bisa login menggunakan NIM/email. Backend menyediakan JWT + rotasi refresh token, profil, tautkan/lepas KTP, saldo/riwayat, nilai poin, daftar mesin, notifikasi, administrasi, dan ingest mesin.
+Backend berada di [`backend/`](backend/) dan menggunakan NestJS: MySQL 8.4 menyimpan akun, kartu, mesin master, transaksi, ledger, tarif, sesi, dan notifikasi; MongoDB 8 menyimpan telemetry MQTT ber-volume tinggi, snapshot terbaru, dan riwayat command. API memakai prefix `/api/v1`. Identitas awal aplikasi tetap NIK 16 digit yang disimpan sebagai HMAC berkunci, tanpa NIM atau relasi kampus. Aplikasi lintas lokasi hanya menggunakan endpoint REST/SSE backend dan tidak menyimpan kredensial broker MQTT.
 
 ### Menjalankan dengan Docker Compose
 
@@ -475,7 +475,7 @@ Ganti seluruh nilai `replace-with-...` di `backend/.env` dengan secret unik. Jan
 docker compose up --build -d
 ```
 
-API tersedia di `http://localhost:3000/api/v1`; endpoint kesehatan di `/api/v1/health`. Lihat log API dengan `docker compose logs -f api`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) sekali pada database agar kolom NIK hash tersedia dan NIM lama menjadi nullable. Seed nilai poin awal dan satu mesin demo:
+API tersedia di `http://localhost:3000/api/v1`; endpoint kesehatan di `/api/v1/health`. Lihat log API dengan `docker compose logs -f api`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, tinjau dan jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) untuk menambahkan NIK hash, indeks MySQL, serta menghapus kolom legacy `nim`/`campus`. Seed nilai poin awal dan satu mesin demo:
 
 ```powershell
 Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -psmartbin smartbin
@@ -484,7 +484,7 @@ Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -
 Untuk memberi akun admin, daftar lebih dulu lewat API, lalu ubah role akun yang memang berwenang melalui MySQL:
 
 ```sql
-UPDATE users SET role = 'admin' WHERE email = 'admin@kampus.ac.id';
+UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
 ```
 
 Endpoint ingest mesin memakai header `X-Machine-Api-Key` yang cocok dengan `MACHINE_API_KEY`; endpoint tidak boleh dipanggil dari aplikasi mobile. Nilai `uid` hanya diproses untuk HMAC dan tidak disimpan mentah. Integrasi perangkat harus mengirim transaksi setoran unik (`transactionId`) ke API; backend menolak transaksi duplikat dan menghitung poin dari nilai saat ini.
@@ -506,6 +506,9 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
 | PUT, POST | `/api/v1/admin/rates`, `/api/v1/machines/:id/reset` | Admin |
 | POST | `/api/v1/machines/:id/deposits`, `/api/v1/machines/:id/status` | Mesin (`X-Machine-Api-Key`) |
+| GET | `/api/v1/machines/telemetry`, `/api/v1/machines/:deviceId/telemetry` | Pengguna |
+| GET | `/api/v1/machines/realtime` | Pengguna (SSE) |
+| POST | `/api/v1/machines/:deviceId/command` | Admin |
 
 Contoh registrasi:
 
@@ -518,7 +521,7 @@ Contoh registrasi:
 }
 ```
 
-Registrasi memvalidasi NIK tepat 16 angka dan alamat email umum. Login menerima NIK atau email. NIK mentah hanya dikirim melalui HTTPS saat registrasi/login; server menghitung HMAC SHA-256 dan hanya menyimpan hasil hash. Response profil tidak pernah mengembalikan NIK. NIM pada response hanya untuk kompatibilitas akun lama.
+Registrasi memvalidasi NIK tepat 16 angka dan alamat email umum. Login menerima NIK atau email. NIK mentah hanya dikirim melalui HTTPS saat registrasi/login; server menghitung HMAC SHA-256 dan hanya menyimpan hasil hash. Response profil tidak pernah mengembalikan NIK.
 
 ### ERD
 
@@ -534,7 +537,7 @@ erDiagram
     USERS ||--o{ REFRESH_SESSIONS : authenticates
     USERS {
         varchar id PK
-        varchar nim UK
+        varchar nik_hash UK
         varchar email UK
         varchar name
         varchar password_hash
@@ -603,9 +606,26 @@ erDiagram
 
 `point_ledger` menyimpan perubahan saldo sebagai audit trail; saldo dihitung dari jumlah `delta`. Setoran yang datang sebelum KTP tertaut disimpan `HELD`, lalu dikreditkan dan ditulis ke ledger dalam transaksi saat kartu ditautkan. Nilai poin dan rate yang dipakai saat transaksi ikut disimpan agar riwayat tidak berubah saat rate diperbarui.
 
+### MQTT, MongoDB, dan realtime mobile
+
+Backend berlangganan `smartbin/+/telemetry/#`, menyimpan event ke koleksi MongoDB `machine_events`, memperbarui `machine_latest`, dan menyiarkan perubahan melalui SSE `GET /api/v1/machines/realtime`. Mobile wajib memakai REST/SSE dengan token JWT dan tidak boleh menyimpan kredensial MQTT. Contoh Flutter:
+
+```dart
+final response = await http.get(
+  Uri.parse('$api/machines/telemetry'),
+  headers: {'Authorization': 'Bearer $accessToken'},
+);
+// SSE: EventSource dari package komunitas, URL $api/machines/realtime
+// headers Authorization dapat diset pada klien HTTP/SSE yang dipakai proyek.
+```
+
+Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PASSWORD`, dan `MQTT_SUBSCRIBE_TOPIC` pada `backend/.env`. Untuk mengubah topik atau endpoint MQTT, edit environment tersebut lalu jalankan `docker compose up -d --build api`; topic perintah tetap mengikuti `smartbin/{deviceId}/command/control`. Dokumentasi payload dan validasi ada di [`backend/docs/mqtt-smartbin.md`](backend/docs/mqtt-smartbin.md).
+
+MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, receivedAt)`, `(topic, receivedAt)`, TTL `receivedAt`, snapshot unik `deviceId`, serta command `(deviceId, createdAt)`/unik `commandId`. Data event kedaluwarsa mengikuti `MONGO_TELEMETRY_TTL_SECONDS` (default 90 hari).
+
 ### Batas MVP backend
 
-- Proses berjalan sebagai HTTP REST; broker MQTT belum dikonfigurasi. Mesin atau bridge MQTT perlu meneruskan data ke endpoint mesin.
+- Broker MQTT eksternal harus tersedia agar ingestion dan command realtime aktif.
 - Pengiriman push FCM dan pendaftaran token perangkat belum diaktifkan; backend hanya menyimpan dan menyajikan notifikasi aplikasi.
 - Endpoint pairing mesin, reward, penghapusan akun, dan detail telemetry belum termasuk implementasi.
 - Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.

@@ -11,6 +11,8 @@ import {
   Query,
   Req,
   UseGuards,
+  Sse,
+  MessageEvent,
 } from "@nestjs/common";
 import {
   AccessTokenGuard,
@@ -29,10 +31,15 @@ import {
   UpdateRatesDto,
 } from "./dto";
 import { SmartbinService } from "./smartbin.service";
+import { MachineTelemetryService } from "./machine-telemetry.service";
+import { map, Observable } from "rxjs";
 
 @Controller()
 export class SmartbinController {
-  constructor(private readonly service: SmartbinService) {}
+  constructor(
+    private readonly service: SmartbinService,
+    private readonly telemetry: MachineTelemetryService,
+  ) {}
 
   @Get("health")
   health(): { status: string } {
@@ -137,6 +144,47 @@ export class SmartbinController {
   @Get("machines")
   machines(): Promise<unknown> {
     return this.service.machines();
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Sse("machines/realtime")
+  machineRealtime(): Observable<MessageEvent> {
+    return this.telemetry.stream.pipe(
+      map(({ data }) => ({ data: JSON.stringify(data) })),
+    );
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get("machines/telemetry")
+  telemetryLatest(@Query("deviceId") deviceId?: string): Promise<unknown> {
+    return this.telemetry.latest(deviceId);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get("machines/:deviceId/telemetry")
+  telemetryHistory(
+    @Param("deviceId") deviceId: string,
+    @Query("limit") limit?: string,
+  ): Promise<unknown> {
+    const parsedLimit = Math.min(Math.max(Number(limit ?? 100), 1), 500);
+    return this.telemetry.latest(deviceId, parsedLimit);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post("machines/:deviceId/command")
+  commandMachine(
+    @Req() req: AuthenticatedRequest,
+    @Param("deviceId") deviceId: string,
+    @Body() body: { command: string; commandId?: string },
+  ): Promise<{ success: true }> {
+    this.service.assertAdmin(req.user.role);
+    return this.telemetry
+      .command(
+        deviceId,
+        body.commandId ?? `cmd-${deviceId}-${Date.now()}`,
+        body.command,
+      )
+      .then(() => ({ success: true }));
   }
 
   @UseGuards(AccessTokenGuard)

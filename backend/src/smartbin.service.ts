@@ -72,7 +72,6 @@ export class SmartbinService {
         message: "NIK atau email sudah terdaftar.",
       });
     const user = this.users.create({
-      nim: null,
       nikHash,
       email,
       name: dto.name.trim(),
@@ -110,7 +109,7 @@ export class SmartbinService {
       .createQueryBuilder("user")
       .addSelect("user.passwordHash")
       .where(
-        "user.email = :identifier OR user.nim = :identifier OR user.nikHash = :nikHash",
+        "user.email = :identifier OR user.nikHash = :nikHash",
         {
           identifier,
           nikHash: isNik ? lookupIdentifier : "",
@@ -400,7 +399,6 @@ export class SmartbinService {
       id: machine.id,
       code: machine.code,
       name: machine.name,
-      campus: machine.campus,
       location: machine.location,
       status: machine.status,
       lastSeen: machine.lastSeen?.toISOString() ?? null,
@@ -601,7 +599,6 @@ export class SmartbinService {
   private publicUser(user: UserEntity): unknown {
     return {
       id: user.id,
-      nim: user.nim,
       name: user.name,
       email: user.email,
       role: user.role,

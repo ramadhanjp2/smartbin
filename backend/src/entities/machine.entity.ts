@@ -21,9 +21,6 @@ export class MachineEntity {
   @Column({ length: 120 })
   name!: string;
 
-  @Column({ length: 120, default: "" })
-  campus!: string;
-
   @Column({ length: 255 })
   location!: string;
 

@@ -21,9 +21,6 @@ export class UserEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "varchar", unique: true, length: 32, nullable: true })
-  nim!: string | null;
-
   @Column({ unique: true, length: 254 })
   email!: string;
 
