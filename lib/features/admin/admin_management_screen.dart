@@ -358,6 +358,10 @@ class _MachineManagement extends ConsumerWidget {
         label: const Text('Konfigurasi Mesin'),
       ),
       const SizedBox(height: 12),
+      if (machines.isEmpty)
+        const SectionCard(
+          child: Text('Mesin belum tersedia pada database. Setelah backend dijalankan ulang, mesin utama akan dibuat otomatis.'),
+        ),
       for (final machine in machines.take(1))
         SectionCard(
           padding: const EdgeInsets.all(12),

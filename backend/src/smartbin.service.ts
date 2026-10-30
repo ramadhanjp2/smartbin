@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  OnModuleInit,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -33,7 +34,7 @@ import {
 } from "./dto";
 
 @Injectable()
-export class SmartbinService {
+export class SmartbinService implements OnModuleInit {
   private readonly failures = new Map<
     string,
     { count: number; until: number }
@@ -60,6 +61,23 @@ export class SmartbinService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    const existing = await this.machinesRepo.findOne({ where: { code: "bin-01" } });
+    if (!existing) {
+      await this.machinesRepo.save(
+        this.machinesRepo.create({
+          code: "bin-01",
+          name: "SmartBIN Unit #01",
+          location: "Lokasi pemasangan",
+          status: "OFFLINE",
+          organicFill: 0,
+          inorganicFill: 0,
+          lastSeen: null,
+        }),
+      );
+    }
+  }
 
   async register(dto: RegisterDto): Promise<unknown> {
     const nikHash = this.nikHash(dto.nik);
