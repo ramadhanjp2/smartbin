@@ -517,6 +517,9 @@ class MockSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<void> configureMachine(String machineId, {required String name, required String location}) async {}
+
+  @override
   Future<List<AdminUserSummary>> adminUsers() async => const [];
 
   @override

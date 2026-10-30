@@ -29,6 +29,7 @@ import {
   RegisterDto,
   UpdateMeDto,
   UpdateRatesDto,
+  UpdateMachineDto,
 } from "./dto";
 
 @Injectable()
@@ -108,13 +109,10 @@ export class SmartbinService {
     const user = await this.users
       .createQueryBuilder("user")
       .addSelect("user.passwordHash")
-      .where(
-        "user.email = :identifier OR user.nikHash = :nikHash",
-        {
-          identifier,
-          nikHash: isNik ? lookupIdentifier : "",
-        },
-      )
+      .where("user.email = :identifier OR user.nikHash = :nikHash", {
+        identifier,
+        nikHash: isNik ? lookupIdentifier : "",
+      })
       .getOne();
     const valid = user
       ? await bcrypt.compare(dto.password, user.passwordHash)
@@ -419,6 +417,19 @@ export class SmartbinService {
       points: deposit.points,
       time: deposit.deviceTime.toISOString(),
     }));
+  }
+
+  async updateMachine(id: string, dto: UpdateMachineDto): Promise<unknown> {
+    const machine = await this.machinesRepo.findOneBy({ id });
+    if (!machine)
+      throw new NotFoundException({
+        code: "MACHINE_NOT_FOUND",
+        message: "Mesin tidak ditemukan.",
+      });
+    if (dto.name !== undefined) machine.name = dto.name;
+    if (dto.location !== undefined) machine.location = dto.location;
+    await this.machinesRepo.save(machine);
+    return this.machines();
   }
 
   async machines(): Promise<unknown> {

@@ -29,6 +29,7 @@ import {
   UnlinkCardDto,
   UpdateMeDto,
   UpdateRatesDto,
+  UpdateMachineDto,
 } from "./dto";
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
@@ -135,6 +136,17 @@ export class SmartbinController {
   adminUsers(@Req() req: AuthenticatedRequest): Promise<unknown> {
     this.service.assertAdmin(req.user.role);
     return this.service.adminUsers();
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Put("admin/machines/:id")
+  updateMachine(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body() dto: UpdateMachineDto,
+  ): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.updateMachine(id, dto);
   }
 
   @UseGuards(AccessTokenGuard)

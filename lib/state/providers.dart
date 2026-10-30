@@ -189,6 +189,8 @@ final ratesProvider = FutureProvider<Rates>((ref) async {
 });
 
 final machinesProvider = FutureProvider<List<Machine>>((ref) => ref.watch(repositoryProvider).machines());
+final adminUsersProvider = FutureProvider<List<AdminUserSummary>>((ref) => ref.watch(repositoryProvider).adminUsers());
+final adminHistoryProvider = FutureProvider<List<AdminHistoryRecord>>((ref) => ref.watch(repositoryProvider).adminHistory());
 
 final telemetryProvider = FutureProvider.family<List<TelemetryLog>, String>((ref, id) => ref.watch(repositoryProvider).telemetry(id));
 

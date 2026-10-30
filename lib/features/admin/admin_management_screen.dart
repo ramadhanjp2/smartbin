@@ -37,56 +37,28 @@ class _AdminManagementScreenState extends ConsumerState<AdminManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final machines = ref.watch(machinesProvider);
+    final users = ref.watch(adminUsersProvider);
+    final history = ref.watch(adminHistoryProvider);
     return Scaffold(
       appBar: const SmartbinAppBar(title: 'Manajemen Admin', showBack: true),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final item in const <({int index, String label, IconData icon})>[
-                (index: 0, label: 'Ringkasan', icon: Icons.analytics_outlined),
-                (index: 1, label: 'Pengguna', icon: Icons.people_alt_outlined),
-                (index: 2, label: 'Mesin', icon: Icons.precision_manufacturing_outlined),
-                (index: 3, label: 'History All', icon: Icons.history),
-              ])
-                ChoiceChip(
-                  selected: item.index == _tab,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => _tab = item.index),
-                  label: Text(item.label),
-                  avatar: Icon(item.icon, size: 18, color: item.index == _tab ? Colors.white : p.textMuted),
-                  selectedColor: p.brand,
-                  labelStyle: TextStyle(color: item.index == _tab ? Colors.white : p.textSecondary),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
           switch (_tab) {
             0 => _Summary(machines: machines.value ?? const []),
-            1 => FutureBuilder<List<AdminUserSummary>>(
-              future: ref.read(repositoryProvider).adminUsers(),
-              builder: (_, snapshot) => _Users(
-                users: snapshot.data ?? const [],
-                loading: snapshot.connectionState == ConnectionState.waiting,
-                error: snapshot.error,
-                search: _search,
-              ),
-            ),
+            1 => switch (users) {
+              AsyncValue(:final value?) => _Users(users: value, loading: false, search: _search),
+              AsyncValue(:final error?) => _Users(users: const [], loading: false, error: error, search: _search),
+              _ => _Users(users: const [], loading: true, search: _search),
+            },
             2 => _MachineManagement(machines: machines.value ?? const []),
-            _ => FutureBuilder<List<AdminHistoryRecord>>(
-              future: ref.read(repositoryProvider).adminHistory(),
-              builder: (_, snapshot) => _HistoryAll(
-                history: snapshot.data ?? const [],
-                loading: snapshot.connectionState == ConnectionState.waiting,
-                error: snapshot.error,
-                search: _search,
-              ),
-            ),
+            _ => switch (history) {
+              AsyncValue(:final value?) => _HistoryAll(history: value, loading: false, search: _search),
+              AsyncValue(:final error?) => _HistoryAll(history: const [], loading: false, error: error, search: _search),
+              _ => _HistoryAll(history: const [], loading: true, search: _search),
+            },
           },
         ],
       ),
@@ -435,11 +407,15 @@ class _MachineManagement extends ConsumerWidget {
         ],
       ),
     );
-    if (ok == true) {
-      ref.read(sharedPrefsProvider).setString('machine_name_${machine?.id ?? 'new'}', name.text);
-      ref.read(sharedPrefsProvider).setString('machine_location_${machine?.id ?? 'new'}', location.text);
-      ref.read(sharedPrefsProvider).setString('machine_telemetry_interval', interval.text);
-      if (context.mounted) showSnack(context, 'Konfigurasi mesin tersimpan');
+    if (ok == true && machine != null) {
+      try {
+        await ref.read(repositoryProvider).configureMachine(machine.id, name: name.text.trim(), location: location.text.trim());
+        ref.read(sharedPrefsProvider).setString('machine_telemetry_interval_${machine.id}', interval.text);
+        ref.invalidate(machinesProvider);
+        if (context.mounted) showSnack(context, 'Konfigurasi mesin tersimpan ke database');
+      } catch (e) {
+        if (context.mounted) showSnack(context, errorText(e));
+      }
     }
   }
 }

@@ -216,6 +216,11 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<void> configureMachine(String machineId, {required String name, required String location}) async {
+    await _request('PUT', 'admin/machines/${Uri.encodeComponent(machineId)}', body: {'name': name, 'location': location});
+  }
+
+  @override
   Future<List<AdminUserSummary>> adminUsers() async {
     final rows = _asList(await _request('GET', 'admin/users'));
     return rows.map((row) {

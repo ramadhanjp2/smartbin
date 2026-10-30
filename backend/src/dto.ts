@@ -166,3 +166,17 @@ export class MachineStatusDto {
   @Max(100)
   inorganicFill?: number;
 }
+
+export class UpdateMachineDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  location?: string;
+}
