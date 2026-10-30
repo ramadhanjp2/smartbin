@@ -92,6 +92,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            SectionCard(
+              onTap: () => context.push('/admin/manage'),
+              padding: const EdgeInsets.all(14),
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: IconTile(icon: Icons.admin_panel_settings_outlined, size: 48),
+                title: Text('Manajemen Admin'),
+                subtitle: Text('Pengguna, mesin, history all, pencarian, export CSV & visualisasi'),
+                trailing: Icon(Icons.arrow_forward_ios, size: 18),
+              ),
+            ),
+            const SizedBox(height: 16),
             switch (machines) {
               AsyncValue(:final value?) when value.isNotEmpty => () {
                 final selected = value.firstWhere((m) => m.id == _selectedId, orElse: () => value.first);

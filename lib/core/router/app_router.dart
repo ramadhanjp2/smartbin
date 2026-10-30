@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models.dart';
 import '../../features/admin/admin_dashboard_screen.dart';
+import '../../features/admin/admin_management_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/card/link_ktp_screen.dart';
 import '../../features/history/deposit_detail_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/home/home_screen.dart';
-import '../../features/machines/machines_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -50,13 +50,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
       GoRoute(path: '/link-ktp', builder: (_, _) => const LinkKtpScreen()),
-      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       GoRoute(
         path: '/deposit/:id',
         builder: (_, s) => DepositDetailScreen(transactionId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/rates', builder: (_, _) => const RatesGuideScreen()),
       GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardScreen()),
+      GoRoute(path: '/admin/manage', builder: (_, _) => const AdminManagementScreen()),
+      GoRoute(path: '/admin/manage', builder: (_, _) => const AdminManagementScreen()),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => MainShell(shell: shell),
         branches: [
@@ -67,7 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [GoRoute(path: '/history', builder: (_, _) => const HistoryScreen())],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/machines', builder: (_, _) => const MachinesScreen())],
+            routes: [GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen())],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen())],

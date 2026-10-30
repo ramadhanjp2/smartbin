@@ -86,7 +86,8 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
 
     if (_phase == _Phase.success) return _SuccessView(result: _result!, onDone: _finish);
 
-    final nfcOff = _nfc == NfcAvailability.disabled || _nfc == NfcAvailability.notSupported;
+    final nfcEnabled = ref.watch(nfcEnabledProvider);
+    final nfcOff = !nfcEnabled || _nfc == NfcAvailability.disabled || _nfc == NfcAvailability.notSupported;
     final busy = _phase == _Phase.scanning || _phase == _Phase.linking;
 
     return Scaffold(
@@ -137,6 +138,7 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
                       ),
                       const SizedBox(width: 8),
                       Text(switch ((_nfc, _phase)) {
+                        (_, _) when !nfcEnabled => 'NFC Dinonaktifkan di Profil',
                         (NfcAvailability.notSupported, _) => 'Ponsel tidak mendukung NFC',
                         (NfcAvailability.disabled, _) => 'NFC Mati',
                         (_, _Phase.scanning) => 'Mendeteksi kartu…',

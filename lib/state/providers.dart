@@ -78,6 +78,20 @@ class NotificationSoundController extends Notifier<bool> {
 
 final notificationSoundProvider = NotifierProvider<NotificationSoundController, bool>(NotificationSoundController.new);
 
+class NfcEnabledController extends Notifier<bool> {
+  static const _key = 'nfc_enabled';
+
+  @override
+  bool build() => ref.read(sharedPrefsProvider).getBool(_key) ?? true;
+
+  void set(bool value) {
+    state = value;
+    ref.read(sharedPrefsProvider).setBool(_key, value);
+  }
+}
+
+final nfcEnabledProvider = NotifierProvider<NfcEnabledController, bool>(NfcEnabledController.new);
+
 // ---------------- Sesi ----------------
 
 class AuthState {

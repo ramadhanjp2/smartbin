@@ -177,6 +177,7 @@ class ProfileScreen extends ConsumerWidget {
                     subtitle: 'Status mesin, tarif poin, reset',
                     onTap: () => context.push('/admin'),
                   ),
+                _SettingTile(icon: Icons.contactless, title: 'Scan / Tautkan KTP', subtitle: user.isCardLinked ? 'Kelola kartu NFC yang tertaut' : 'NFC aktif untuk menautkan KTP', onTap: () => context.push('/link-ktp')),
                 _SettingTile(icon: Icons.badge_outlined, title: 'Ubah Nama Profil', subtitle: user.name, onTap: () => _editName(context, ref, user)),
                 _SettingTile(
                   icon: Icons.lock_reset,
@@ -211,9 +212,19 @@ class ProfileScreen extends ConsumerWidget {
                     child: Icon(Icons.volume_up_outlined, color: p.textSecondary),
                   ),
                   title: Text('Notifikasi & Suara', style: context.text.labelLarge?.copyWith(color: p.textSecondary)),
-                  subtitle: Text('Bunyi saat setoran tercatat', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  subtitle: Text('Aktifkan peringatan setoran, mesin, dan KTP', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
                   value: ref.watch(notificationSoundProvider),
                   onChanged: (v) => ref.read(notificationSoundProvider.notifier).set(v),
+                ),
+                SwitchListTile(
+                  secondary: CircleAvatar(
+                    backgroundColor: p.cardMuted,
+                    child: Icon(Icons.contactless, color: p.textSecondary),
+                  ),
+                  title: Text('NFC KTP', style: context.text.labelLarge?.copyWith(color: p.textSecondary)),
+                  subtitle: Text('Aktifkan pemindaian kartu saat menggunakan menu Scan KTP', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  value: ref.watch(nfcEnabledProvider),
+                  onChanged: (v) => ref.read(nfcEnabledProvider.notifier).set(v),
                 ),
                 _SettingTile(
                   icon: Icons.privacy_tip_outlined,
