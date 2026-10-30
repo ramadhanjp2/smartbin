@@ -460,50 +460,77 @@ class _MachineManagement extends ConsumerWidget {
   );
 
   Future<void> _configure(BuildContext context, WidgetRef ref, Machine? machine) async {
-    final name = TextEditingController(text: machine?.name ?? 'SmartBIN Baru');
-    final location = TextEditingController(text: machine?.location ?? 'Lokasi pemasangan');
-    final interval = TextEditingController(text: ref.read(sharedPrefsProvider).getString('machine_telemetry_interval') ?? '60');
-    final ok = await showDialog<bool>(
+    if (machine == null) return;
+    final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(machine == null ? 'Konfigurasi mesin' : 'Konfigurasi ${machine.name}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: name,
-                decoration: const InputDecoration(labelText: 'Nama mesin'),
-              ),
-              TextField(
-                controller: location,
-                decoration: const InputDecoration(labelText: 'Lokasi'),
-              ),
-              TextField(
-                controller: interval,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Interval telemetry (detik)'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Simpan')),
-        ],
+      builder: (_) => _MachineConfigDialog(
+        machine: machine,
+        interval: ref.read(sharedPrefsProvider).getString('machine_telemetry_interval_${machine.id}') ?? '60',
       ),
     );
-    if (ok == true && machine != null) {
-      try {
-        await ref.read(repositoryProvider).configureMachine(machine.id, name: name.text.trim(), location: location.text.trim());
-        ref.read(sharedPrefsProvider).setString('machine_telemetry_interval_${machine.id}', interval.text);
-        ref.invalidate(machinesProvider);
-        if (context.mounted) showSnack(context, 'Konfigurasi mesin tersimpan ke database');
-      } catch (e) {
-        if (context.mounted) showSnack(context, errorText(e));
-      }
+    if (result == null || !context.mounted) return;
+    try {
+      await ref.read(repositoryProvider).configureMachine(machine.id, name: result['name']!.trim(), location: result['location']!.trim());
+      await ref.read(sharedPrefsProvider).setString('machine_telemetry_interval_${machine.id}', result['interval']!);
+      ref.invalidate(machinesProvider);
+      if (context.mounted) showSnack(context, 'Konfigurasi mesin tersimpan ke database');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errorText(e));
     }
   }
+}
+
+class _MachineConfigDialog extends StatefulWidget {
+  const _MachineConfigDialog({required this.machine, required this.interval});
+  final Machine machine;
+  final String interval;
+
+  @override
+  State<_MachineConfigDialog> createState() => _MachineConfigDialogState();
+}
+
+class _MachineConfigDialogState extends State<_MachineConfigDialog> {
+  late final TextEditingController _name;
+  late final TextEditingController _location;
+  late final TextEditingController _interval;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.machine.name);
+    _location = TextEditingController(text: widget.machine.location);
+    _interval = TextEditingController(text: widget.interval);
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _location.dispose();
+    _interval.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text('Konfigurasi ${widget.machine.name}'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nama mesin')),
+          TextField(controller: _location, decoration: const InputDecoration(labelText: 'Lokasi')),
+          TextField(controller: _interval, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Interval telemetry (detik)')),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop({'name': _name.text.trim(), 'location': _location.text.trim(), 'interval': _interval.text.trim().isEmpty ? '60' : _interval.text.trim()}),
+        child: const Text('Simpan'),
+      ),
+    ],
+  );
 }
 
 class _HistoryAll extends StatefulWidget {
