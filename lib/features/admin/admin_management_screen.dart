@@ -128,13 +128,15 @@ class _Summary extends ConsumerWidget {
                   final rows = snapshot.data ?? const <AdminHistoryRecord>[];
                   final totals = <int, double>{};
                   for (final row in rows) {
-                    final key = row.time.toLocal().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    final localTime = row.time.toLocal();
+                    final day = DateTime(localTime.year, localTime.month, localTime.day);
+                    final key = day.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
                     totals[key] = (totals[key] ?? 0) + row.weightKg;
                   }
                   final now = DateTime.now();
                   final values = List.generate(7, (index) {
                     final day = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - index));
-                    final key = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    final key = day.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
                     return totals[key] ?? 0;
                   });
                   return _MiniChart(values: values, color: p.brand);
@@ -184,40 +186,35 @@ class _Gauge extends StatelessWidget {
   final int value;
   final Color color;
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      SizedBox(
-        height: 118,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: 118,
-              height: 118,
-              child: CircularProgressIndicator(value: value / 100, strokeWidth: 12, backgroundColor: color.withValues(alpha: .12), color: color),
-            ),
-            Text('$value%', style: context.text.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-          ],
+  Widget build(BuildContext context) {
+    final safeValue = value.clamp(0, 100);
+    return Column(
+      children: [
+        SizedBox(
+          height: 118,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 118,
+                height: 118,
+                child: CircularProgressIndicator(value: safeValue / 100, strokeWidth: 12, backgroundColor: color.withValues(alpha: .12), color: color),
+              ),
+              Text('$safeValue%', style: context.text.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 8),
-      Text(label, style: context.text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-      Text(
-        value >= 90
-            ? 'Kritis / penuh'
-            : value >= 75
-            ? 'Perlu diangkat'
-            : 'Kapasitas aman',
-        style: context.text.bodySmall?.copyWith(
-          color: value >= 90
-              ? context.palette.error
-              : value >= 75
-              ? context.palette.warning
-              : context.palette.success,
+        const SizedBox(height: 8),
+        Text(label, style: context.text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          safeValue >= 90 ? 'Kritis / penuh' : safeValue >= 75 ? 'Perlu diangkat' : 'Kapasitas aman',
+          style: context.text.bodySmall?.copyWith(
+            color: safeValue >= 90 ? context.palette.error : safeValue >= 75 ? context.palette.warning : context.palette.success,
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _MiniChart extends StatelessWidget {
@@ -269,17 +266,17 @@ class _MiniChart extends StatelessWidget {
   }
 }
 
-class _Users extends StatefulWidget {
+class _Users extends ConsumerStatefulWidget {
   const _Users({required this.users, required this.search, required this.loading, this.error});
   final List<AdminUserSummary> users;
   final TextEditingController search;
   final bool loading;
   final Object? error;
   @override
-  State<_Users> createState() => _UsersState();
+  ConsumerState<_Users> createState() => _UsersState();
 }
 
-class _UsersState extends State<_Users> {
+class _UsersState extends ConsumerState<_Users> {
   @override
   Widget build(BuildContext context) {
     final query = widget.search.text.toLowerCase();
@@ -311,11 +308,16 @@ class _UsersState extends State<_Users> {
               subtitle: Text('${user.email}\n${user.role} • ${user.active ? 'Aktif' : 'Nonaktif'}'),
               isThreeLine: true,
               trailing: PopupMenuButton<String>(
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'toggle', child: Text('Aktifkan / Nonaktifkan')),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit pengguna')),
+                  PopupMenuItem(value: 'toggle', child: Text(user.active ? 'Nonaktifkan' : 'Aktifkan')),
+                  const PopupMenuItem(value: 'delete', child: Text('Hapus pengguna', style: TextStyle(color: Colors.red))),
                 ],
-                onSelected: (v) => showSnack(context, v == 'edit' ? 'Form edit pengguna dibuka' : 'Status pengguna diperbarui'),
+                onSelected: (v) {
+                  if (v == 'edit') _editUser(context, user);
+                  if (v == 'toggle') _toggleUser(context, user);
+                  if (v == 'delete') _deleteUser(context, user);
+                },
               ),
             ),
           ),
@@ -324,16 +326,26 @@ class _UsersState extends State<_Users> {
   }
 
   Future<void> _addUser(BuildContext context) async {
+    final nik = TextEditingController();
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final password = TextEditingController();
+    String role = 'user';
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Tambah pengguna'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(decoration: InputDecoration(labelText: 'Nama')),
-            TextField(decoration: InputDecoration(labelText: 'Email')),
-          ],
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nik, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'NIK (16 digit)')),
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')),
+            TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+            TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+            DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Peran'), items: const [
+              DropdownMenuItem(value: 'user', child: Text('Pengguna')),
+              DropdownMenuItem(value: 'admin', child: Text('Admin')),
+            ], onChanged: (value) => role = value ?? 'user'),
+          ]),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
@@ -341,7 +353,77 @@ class _UsersState extends State<_Users> {
         ],
       ),
     );
-    if (ok == true && context.mounted) showSnack(context, 'Pengguna berhasil ditambahkan');
+    if (ok != true) return;
+    try {
+      await ref.read(repositoryProvider).createAdminUser(nik: nik.text.trim(), name: name.text.trim(), email: email.text.trim(), password: password.text, role: role);
+      ref.invalidate(adminUsersProvider);
+      if (context.mounted) showSnack(context, 'Pengguna berhasil ditambahkan');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errorText(e));
+    }
+  }
+
+  Future<void> _editUser(BuildContext context, AdminUserSummary user) async {
+    final name = TextEditingController(text: user.name);
+    final email = TextEditingController(text: user.email);
+    final password = TextEditingController();
+    String role = user.role;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit pengguna'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')),
+          TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password baru (opsional)')),
+          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Peran'), items: const [
+            DropdownMenuItem(value: 'user', child: Text('Pengguna')),
+            DropdownMenuItem(value: 'admin', child: Text('Admin')),
+          ], onChanged: (value) => role = value ?? 'user'),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Simpan')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(repositoryProvider).updateAdminUser(user.id, name: name.text.trim(), email: email.text.trim(), role: role, password: password.text.isEmpty ? null : password.text);
+      ref.invalidate(adminUsersProvider);
+      if (context.mounted) showSnack(context, 'Pengguna berhasil diperbarui');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errorText(e));
+    }
+  }
+
+  Future<void> _toggleUser(BuildContext context, AdminUserSummary user) async {
+    try {
+      await ref.read(repositoryProvider).updateAdminUser(user.id, active: !user.active);
+      ref.invalidate(adminUsersProvider);
+      if (context.mounted) showSnack(context, user.active ? 'Pengguna dinonaktifkan' : 'Pengguna diaktifkan');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errorText(e));
+    }
+  }
+
+  Future<void> _deleteUser(BuildContext context, AdminUserSummary user) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
+      title: const Text('Hapus pengguna?'),
+      content: Text('${user.name} akan dihapus permanen dari database.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('Hapus')),
+      ],
+    ));
+    if (confirmed != true) return;
+    try {
+      await ref.read(repositoryProvider).deleteAdminUser(user.id);
+      ref.invalidate(adminUsersProvider);
+      if (context.mounted) showSnack(context, 'Pengguna berhasil dihapus');
+    } catch (e) {
+      if (context.mounted) showSnack(context, errorText(e));
+    }
   }
 }
 

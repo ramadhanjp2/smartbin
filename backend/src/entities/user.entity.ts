@@ -43,6 +43,9 @@ export class UserEntity {
   @Column({ type: "enum", enum: ["user", "admin"], default: "user" })
   role!: UserRole;
 
+  @Column({ type: "boolean", default: true })
+  active!: boolean;
+
   @OneToOne(() => CardEntity, (card) => card.user)
   card?: CardEntity | null;
 

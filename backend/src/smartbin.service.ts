@@ -30,6 +30,8 @@ import {
   RegisterDto,
   UpdateMeDto,
   UpdateRatesDto,
+  CreateAdminUserDto,
+  UpdateAdminUserDto,
   UpdateMachineDto,
 } from "./dto";
 
@@ -145,6 +147,12 @@ export class SmartbinService implements OnModuleInit {
       throw new UnauthorizedException({
         code: "INVALID_CREDENTIALS",
         message: "NIK/email atau kata sandi salah.",
+      });
+    }
+    if (!user.active) {
+      throw new UnauthorizedException({
+        code: "ACCOUNT_INACTIVE",
+        message: "Akun dinonaktifkan. Hubungi administrator.",
       });
     }
     this.failures.delete(failureKey);
@@ -416,8 +424,50 @@ export class SmartbinService implements OnModuleInit {
       name: user.name,
       email: user.email,
       role: user.role,
-      active: true,
+      active: user.active !== false,
     }));
+  }
+
+  async createAdminUser(dto: CreateAdminUserDto): Promise<unknown> {
+    const nikHash = this.nikHash(dto.nik);
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.users.findOne({ where: [{ nikHash }, { email }] });
+    if (exists) throw new ConflictException({ code: "ACCOUNT_EXISTS", message: "NIK atau email sudah digunakan." });
+    const user = this.users.create({
+      nikHash,
+      email,
+      name: dto.name.trim(),
+      passwordHash: await bcrypt.hash(dto.password, 12),
+      role: dto.role ?? "user",
+      active: true,
+    });
+    await this.users.save(user);
+    return { id: user.id, name: user.name, email: user.email, role: user.role, active: true };
+  }
+
+  async updateAdminUser(id: string, dto: UpdateAdminUserDto): Promise<unknown> {
+    const user = await this.users.findOneBy({ id });
+    if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "Pengguna tidak ditemukan." });
+    if (dto.name !== undefined) user.name = dto.name.trim();
+    if (dto.email !== undefined) {
+      const email = dto.email.trim().toLowerCase();
+      const duplicate = await this.users.findOne({ where: { email } });
+      if (duplicate && duplicate.id !== id) throw new ConflictException({ code: "EMAIL_EXISTS", message: "Email sudah digunakan." });
+      user.email = email;
+    }
+    if (dto.role !== undefined) user.role = dto.role;
+    if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
+    if (dto.active !== undefined) user.active = dto.active;
+    await this.users.save(user);
+    return { id: user.id, name: user.name, email: user.email, role: user.role, active: user.active !== false };
+  }
+
+  async deleteAdminUser(id: string, currentUserId: string): Promise<{ success: true }> {
+    if (id === currentUserId) throw new BadRequestException({ code: "SELF_DELETE", message: "Tidak dapat menghapus akun yang sedang digunakan." });
+    const user = await this.users.findOneBy({ id });
+    if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "Pengguna tidak ditemukan." });
+    await this.users.remove(user);
+    return { success: true };
   }
 
   async adminHistory(): Promise<unknown> {

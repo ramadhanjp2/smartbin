@@ -523,5 +523,14 @@ class MockSmartbinRepository implements SmartbinRepository {
   Future<List<AdminUserSummary>> adminUsers() async => const [];
 
   @override
+  Future<void> createAdminUser({required String nik, required String name, required String email, required String password, required String role}) async {}
+
+  @override
+  Future<void> updateAdminUser(String id, {String? name, String? email, String? role, String? password, bool? active}) async {}
+
+  @override
+  Future<void> deleteAdminUser(String id) async {}
+
+  @override
   Future<List<AdminHistoryRecord>> adminHistory() async => const [];
 }

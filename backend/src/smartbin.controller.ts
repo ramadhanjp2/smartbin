@@ -30,6 +30,8 @@ import {
   UpdateMeDto,
   UpdateRatesDto,
   UpdateMachineDto,
+  CreateAdminUserDto,
+  UpdateAdminUserDto,
 } from "./dto";
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
@@ -136,6 +138,37 @@ export class SmartbinController {
   adminUsers(@Req() req: AuthenticatedRequest): Promise<unknown> {
     this.service.assertAdmin(req.user.role);
     return this.service.adminUsers();
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post("admin/users")
+  createAdminUser(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateAdminUserDto,
+  ): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.createAdminUser(dto);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Patch("admin/users/:id")
+  updateAdminUser(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body() dto: UpdateAdminUserDto,
+  ): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.updateAdminUser(id, dto);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Delete("admin/users/:id")
+  deleteAdminUser(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+  ): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.deleteAdminUser(id, req.user.sub);
   }
 
   @UseGuards(AccessTokenGuard)

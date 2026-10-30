@@ -236,6 +236,27 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<void> createAdminUser({required String nik, required String name, required String email, required String password, required String role}) async {
+    await _request('POST', 'admin/users', body: {'nik': nik, 'name': name, 'email': email, 'password': password, 'role': role});
+  }
+
+  @override
+  Future<void> updateAdminUser(String id, {String? name, String? email, String? role, String? password, bool? active}) async {
+    final body = <String, Object?>{};
+    if (name != null) body['name'] = name;
+    if (email != null) body['email'] = email;
+    if (role != null) body['role'] = role;
+    if (password != null) body['password'] = password;
+    if (active != null) body['active'] = active;
+    await _request('PATCH', 'admin/users/${Uri.encodeComponent(id)}', body: body);
+  }
+
+  @override
+  Future<void> deleteAdminUser(String id) async {
+    await _request('DELETE', 'admin/users/${Uri.encodeComponent(id)}');
+  }
+
+  @override
   Future<List<AdminHistoryRecord>> adminHistory() async {
     final rows = _asList(await _request('GET', 'admin/history'));
     return rows.map((row) {

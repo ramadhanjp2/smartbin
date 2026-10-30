@@ -1,3 +1,6 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+UPDATE users SET active = TRUE WHERE active IS NULL;
+
 INSERT INTO rates (id, organik_per_kg, anorganik_per_kg, updated_at)
 VALUES (1, 40, 100, UTC_TIMESTAMP(3))
 ON DUPLICATE KEY UPDATE id = VALUES(id);

@@ -1,5 +1,6 @@
 import { Transform } from "class-transformer";
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsInt,
@@ -165,6 +166,57 @@ export class MachineStatusDto {
   @Min(0)
   @Max(100)
   inorganicFill?: number;
+}
+
+export class CreateAdminUserDto {
+  @IsString()
+  @Matches(/^\d{16}$/)
+  nik!: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name!: string;
+
+  @IsEmail()
+  @MaxLength(254)
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  password!: string;
+
+  @IsOptional()
+  @IsEnum(["user", "admin"])
+  role?: "user" | "admin";
+}
+
+export class UpdateAdminUserDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name?: string;
+
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(254)
+  email?: string;
+
+  @IsOptional()
+  @IsEnum(["user", "admin"])
+  role?: "user" | "admin";
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(72)
+  password?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 export class UpdateMachineDto {
