@@ -145,7 +145,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       AppNotification(
         id: 'n-4',
         kind: NotificationKind.achievement,
-        title: 'Pencapaian Eco Warrior Level 2! 🌱',
+        title: 'Pencapaian SmartBIN Level 2! 🌱',
         body: 'Selamat! Total pemilahan sampah Anda melampaui 10 kg bulan ini.',
         createdAt: ago(d: 4),
         read: true,
@@ -157,7 +157,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       Machine(
         id: 'bin-01',
         name: 'SmartBIN Unit #01',
-        campus: 'Kampus Utama',
+        campus: 'Lokasi Utama',
         location: 'Lantai 1 Lobby Barat, Perpustakaan Pusat',
         status: MachineStatus.siap,
         lastSeen: ago(m: 0).subtract(const Duration(seconds: 10)),
@@ -176,7 +176,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       Machine(
         id: 'bin-02',
         name: 'SmartBIN Unit #02',
-        campus: 'Fakultas Teknik',
+        campus: 'Area Produksi',
         location: 'Selasar Gedung K, dekat Kantin Teknik',
         status: MachineStatus.penuh,
         lastSeen: ago(m: 1),
@@ -195,7 +195,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       Machine(
         id: 'bin-04',
         name: 'SmartBIN Unit #04',
-        campus: 'Asrama Mahasiswa',
+        campus: 'Area Hunian',
         location: 'Lobi Gedung C Asrama UI',
         status: MachineStatus.gangguan,
         lastSeen: ago(m: 2),
@@ -214,7 +214,7 @@ class MockSmartbinRepository implements SmartbinRepository {
       Machine(
         id: 'bin-03',
         name: 'SmartBIN Unit #03',
-        campus: 'FISIP',
+        campus: 'Area Kantor',
         location: 'Lobi Gedung B FISIP',
         status: MachineStatus.offline,
         lastSeen: ago(h: 3, m: 12),
@@ -515,4 +515,10 @@ class MockSmartbinRepository implements SmartbinRepository {
             : m,
     ];
   }
+
+  @override
+  Future<List<AdminUserSummary>> adminUsers() async => const [];
+
+  @override
+  Future<List<AdminHistoryRecord>> adminHistory() async => const [];
 }

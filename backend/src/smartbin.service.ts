@@ -393,6 +393,34 @@ export class SmartbinService {
     return this.rates();
   }
 
+  async adminUsers(): Promise<unknown> {
+    const rows = await this.users.find({ order: { createdAt: "DESC" } });
+    return rows.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      active: true,
+    }));
+  }
+
+  async adminHistory(): Promise<unknown> {
+    const rows = await this.depositsRepo.find({
+      relations: { machine: true, user: true },
+      order: { deviceTime: "DESC" },
+      take: 1000,
+    });
+    return rows.map((deposit) => ({
+      id: deposit.transactionId,
+      userId: deposit.userId ?? "-",
+      machine: deposit.machine?.name ?? deposit.machineId,
+      type: deposit.type === "ORGANIK" ? "Organik" : "Anorganik",
+      weightKg: Number((deposit.weightG / 1000).toFixed(3)),
+      points: deposit.points,
+      time: deposit.deviceTime.toISOString(),
+    }));
+  }
+
   async machines(): Promise<unknown> {
     const rows = await this.machinesRepo.find({ order: { name: "ASC" } });
     return rows.map((machine) => ({

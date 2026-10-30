@@ -23,6 +23,34 @@ enum MachineStatus {
 
 enum NotificationKind { deposit, card, sync, achievement, machine }
 
+class AdminUserSummary {
+  const AdminUserSummary({required this.id, required this.name, required this.email, required this.role, required this.active});
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+  final bool active;
+}
+
+class AdminHistoryRecord {
+  const AdminHistoryRecord({
+    required this.id,
+    required this.userId,
+    required this.machine,
+    required this.type,
+    required this.weightKg,
+    required this.points,
+    required this.time,
+  });
+  final String id;
+  final String userId;
+  final String machine;
+  final String type;
+  final double weightKg;
+  final int points;
+  final DateTime time;
+}
+
 class CardLink {
   const CardLink({required this.linkedAt, required this.uidHashSuffix});
   final DateTime linkedAt;
@@ -44,7 +72,7 @@ class AppUser {
 
   final String id;
 
-  /// NIM lama untuk kompatibilitas akun terdahulu; NIK baru tidak pernah dikirim balik.
+  /// Identitas lama dipertahankan untuk kompatibilitas data terdahulu.
   final String? nim;
   final String name;
   final String email;

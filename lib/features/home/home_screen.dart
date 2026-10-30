@@ -229,7 +229,7 @@ class _Greeting extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Halo, ${user?.firstName ?? 'Mahasiswa'}! 👋', style: context.text.headlineLarge?.copyWith(color: p.textPrimary)),
+              Text('Halo, ${user?.firstName ?? 'Pengguna'}! 👋', style: context.text.headlineLarge?.copyWith(color: p.textPrimary)),
               const SizedBox(height: 2),
               Row(
                 children: [
@@ -362,7 +362,7 @@ class _BalanceCard extends ConsumerWidget {
                         children: [
                           Icon(Icons.emoji_events_outlined, size: 14, color: p.accentSoft),
                           const SizedBox(width: 4),
-                          Text('Level ${summary.level} Eco Warrior', style: context.text.labelSmall?.copyWith(color: p.accentSoft)),
+                          Text('Level ${summary.level} SmartBIN', style: context.text.labelSmall?.copyWith(color: p.accentSoft)),
                         ],
                       ),
                     ),

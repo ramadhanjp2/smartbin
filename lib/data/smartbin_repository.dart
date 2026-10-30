@@ -35,4 +35,6 @@ abstract class SmartbinRepository {
   // Admin
   Future<Rates> updateRates({required int organikPerKg, required int anorganikPerKg});
   Future<void> resetMachine(String machineId);
+  Future<List<AdminUserSummary>> adminUsers();
+  Future<List<AdminHistoryRecord>> adminHistory();
 }

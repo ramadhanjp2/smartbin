@@ -215,6 +215,38 @@ class ApiSmartbinRepository implements SmartbinRepository {
     await _request('POST', 'machines/${Uri.encodeComponent(machineId)}/reset');
   }
 
+  @override
+  Future<List<AdminUserSummary>> adminUsers() async {
+    final rows = _asList(await _request('GET', 'admin/users'));
+    return rows.map((row) {
+      final json = _asMap(row);
+      return AdminUserSummary(
+        id: _stringValue(json['id']),
+        name: _stringValue(json['name']),
+        email: _stringValue(json['email']),
+        role: _stringValue(json['role'], fallback: 'user'),
+        active: json['active'] != false,
+      );
+    }).toList();
+  }
+
+  @override
+  Future<List<AdminHistoryRecord>> adminHistory() async {
+    final rows = _asList(await _request('GET', 'admin/history'));
+    return rows.map((row) {
+      final json = _asMap(row);
+      return AdminHistoryRecord(
+        id: _stringValue(json['id']),
+        userId: _stringValue(json['userId'], fallback: '-'),
+        machine: _stringValue(json['machine'], fallback: '-'),
+        type: _stringValue(json['type'], fallback: '-'),
+        weightKg: _doubleValue(json['weightKg']),
+        points: _intValue(json['points']),
+        time: _dateValue(json['time']),
+      );
+    }).toList();
+  }
+
   Future<Object?> _request(
     String method,
     String path, {
@@ -388,6 +420,12 @@ class ApiSmartbinRepository implements SmartbinRepository {
     if (value is int) return value;
     if (value is num) return value.toInt();
     throw const FormatException('Expected an integer.');
+  }
+
+  static double _doubleValue(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.parse(value);
+    throw const FormatException('Expected a number.');
   }
 
   static DateTime _dateValue(Object? value) {

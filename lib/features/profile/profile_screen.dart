@@ -40,7 +40,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  user.nim == null ? user.email : 'NIM lama: ${user.nim} • ${user.email}',
+                  user.email,
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: p.textMuted),
                 ),
@@ -53,7 +53,7 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       Icon(Icons.eco_outlined, size: 16, color: p.textPrimary),
                       const SizedBox(width: 6),
-                      Text('Eco Warrior Lv. ${summary?.level ?? 1}', style: context.text.labelMedium?.copyWith(color: p.textPrimary)),
+                      Text('Level ${summary?.level ?? 1}', style: context.text.labelMedium?.copyWith(color: p.textPrimary)),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -100,7 +100,7 @@ class ProfileScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('SALDO AKTIF MAHASISWA', style: context.text.labelSmall?.copyWith(color: p.textMuted)),
+                            Text('SALDO AKTIF PENGGUNA', style: context.text.labelSmall?.copyWith(color: p.textMuted)),
                             const SizedBox(height: 4),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -177,7 +177,12 @@ class ProfileScreen extends ConsumerWidget {
                     subtitle: 'Status mesin, tarif poin, reset',
                     onTap: () => context.push('/admin'),
                   ),
-                _SettingTile(icon: Icons.contactless, title: 'Scan / Tautkan KTP', subtitle: user.isCardLinked ? 'Kelola kartu NFC yang tertaut' : 'NFC aktif untuk menautkan KTP', onTap: () => context.push('/link-ktp')),
+                _SettingTile(
+                  icon: Icons.contactless,
+                  title: 'Scan / Tautkan KTP',
+                  subtitle: user.isCardLinked ? 'Kelola kartu NFC yang tertaut' : 'NFC aktif untuk menautkan KTP',
+                  onTap: () => context.push('/link-ktp'),
+                ),
                 _SettingTile(icon: Icons.badge_outlined, title: 'Ubah Nama Profil', subtitle: user.name, onTap: () => _editName(context, ref, user)),
                 _SettingTile(
                   icon: Icons.lock_reset,
@@ -222,7 +227,10 @@ class ProfileScreen extends ConsumerWidget {
                     child: Icon(Icons.contactless, color: p.textSecondary),
                   ),
                   title: Text('NFC KTP', style: context.text.labelLarge?.copyWith(color: p.textSecondary)),
-                  subtitle: Text('Aktifkan pemindaian kartu saat menggunakan menu Scan KTP', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  subtitle: Text(
+                    'Aktifkan pemindaian kartu saat menggunakan menu Scan KTP',
+                    style: context.text.bodySmall?.copyWith(color: p.textMuted),
+                  ),
                   value: ref.watch(nfcEnabledProvider),
                   onChanged: (v) => ref.read(nfcEnabledProvider.notifier).set(v),
                 ),
@@ -406,7 +414,7 @@ class _KtmCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  user.nim == null ? user.email : 'NIM lama ${user.nim}',
+                  user.email,
                   style: context.text.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),

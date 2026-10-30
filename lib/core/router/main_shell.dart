@@ -1,17 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/models.dart';
+import '../../state/providers.dart';
+
 /// Bottom navigation pengguna: Beranda, Riwayat, Scan KTP, Notifikasi, Profil.
-class MainShell extends StatelessWidget {
+class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(currentUserProvider)?.role == UserRole.admin;
+    if (isAdmin) {
+      return Scaffold(
+        body: shell,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: shell.currentIndex,
+          onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+            NavigationDestination(icon: Icon(Icons.people_alt_outlined), selectedIcon: Icon(Icons.people_alt), label: 'Pengguna'),
+            NavigationDestination(
+              icon: Icon(Icons.precision_manufacturing_outlined),
+              selectedIcon: Icon(Icons.precision_manufacturing),
+              label: 'Mesin',
+            ),
+            NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'History'),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       body: shell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: switch (shell.currentIndex) { 0 => 0, 1 => 1, 2 => 3, 3 => 4, _ => 0 },
+        selectedIndex: switch (shell.currentIndex) {
+          0 => 0,
+          1 => 1,
+          2 => 3,
+          3 => 4,
+          _ => 0,
+        },
         onDestinationSelected: (index) {
           if (index == 2) {
             context.push('/link-ktp');

@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
@@ -8,26 +12,22 @@ import '../../data/models.dart';
 import '../../state/providers.dart';
 
 class AdminManagementScreen extends ConsumerStatefulWidget {
-  const AdminManagementScreen({super.key});
+  const AdminManagementScreen({super.key, this.initialTab = 0});
+  final int initialTab;
 
   @override
   ConsumerState<AdminManagementScreen> createState() => _AdminManagementScreenState();
 }
 
 class _AdminManagementScreenState extends ConsumerState<AdminManagementScreen> {
-  int _tab = 0;
+  late int _tab;
   final _search = TextEditingController();
-  final List<_ManagedUser> _users = const [
-    _ManagedUser('USR-001', 'Ahmad Fauzi', 'ahmad@smartbin.id', 'Mahasiswa', true),
-    _ManagedUser('USR-002', 'Siti Nurhaliza', 'siti@smartbin.id', 'Mahasiswa', true),
-    _ManagedUser('USR-003', 'Budi Santoso', 'budi@smartbin.id', 'Petugas', true),
-    _ManagedUser('USR-004', 'Dewi Lestari', 'dewi@smartbin.id', 'Mahasiswa', false),
-  ];
-  final List<_AdminHistory> _history = const [
-    _AdminHistory('TX-24001', 'USR-001', 'SmartBIN A-01', 'Organik', 2.40, 240, '29 Okt 2026 16:20'),
-    _AdminHistory('TX-24002', 'USR-002', 'SmartBIN B-03', 'Anorganik', 1.15, 115, '29 Okt 2026 15:42'),
-    _AdminHistory('TX-24003', 'USR-003', 'SmartBIN A-01', 'Anorganik', 3.05, 305, '29 Okt 2026 14:18'),
-  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = widget.initialTab;
+  }
 
   @override
   void dispose() {
@@ -68,9 +68,25 @@ class _AdminManagementScreenState extends ConsumerState<AdminManagementScreen> {
           const SizedBox(height: 16),
           switch (_tab) {
             0 => _Summary(machines: machines.value ?? const []),
-            1 => _Users(users: _users, search: _search),
+            1 => FutureBuilder<List<AdminUserSummary>>(
+              future: ref.read(repositoryProvider).adminUsers(),
+              builder: (_, snapshot) => _Users(
+                users: snapshot.data ?? const [],
+                loading: snapshot.connectionState == ConnectionState.waiting,
+                error: snapshot.error,
+                search: _search,
+              ),
+            ),
             2 => _MachineManagement(machines: machines.value ?? const []),
-            _ => _HistoryAll(history: _history, search: _search),
+            _ => FutureBuilder<List<AdminHistoryRecord>>(
+              future: ref.read(repositoryProvider).adminHistory(),
+              builder: (_, snapshot) => _HistoryAll(
+                history: snapshot.data ?? const [],
+                loading: snapshot.connectionState == ConnectionState.waiting,
+                error: snapshot.error,
+                search: _search,
+              ),
+            ),
           },
         ],
       ),
@@ -78,45 +94,33 @@ class _AdminManagementScreenState extends ConsumerState<AdminManagementScreen> {
   }
 }
 
-class _ManagedUser {
-  final String id;
-  final String name;
-  final String email;
-  final String role;
-  final bool active;
-  const _ManagedUser(this.id, this.name, this.email, this.role, this.active);
-}
-
-class _AdminHistory {
-  final String id;
-  final String userId;
-  final String machine;
-  final String type;
-  final double kg;
-  final int points;
-  final String time;
-  const _AdminHistory(this.id, this.userId, this.machine, this.type, this.kg, this.points, this.time);
-}
-
-class _Summary extends StatelessWidget {
+class _Summary extends ConsumerWidget {
   const _Summary({required this.machines});
   final List<Machine> machines;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final online = machines.where((m) => m.status != MachineStatus.offline).length;
-    final avgOrganic = machines.isEmpty ? 0 : machines.map((m) => m.organicFill).reduce((a, b) => a + b) ~/ machines.length;
-    final avgInorganic = machines.isEmpty ? 0 : machines.map((m) => m.inorganicFill).reduce((a, b) => a + b) ~/ machines.length;
+    final machine = machines.isEmpty ? null : machines.first;
+    final organic = machine?.organicFill ?? 0;
+    final inorganic = machine?.inorganicFill ?? 0;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _StatTile(icon: Icons.sensors, color: p.brand, label: 'Mesin Online', value: '$online'),
+              child: _StatTile(icon: Icons.sensors, color: p.brand, label: 'Status Mesin', value: machine?.status.label ?? 'Tidak ada'),
             ),
             const SizedBox(width: 10),
-            const Expanded(
-              child: _StatTile(icon: Icons.people, color: Colors.blue, label: 'Pengguna Aktif', value: '128'),
+            Expanded(
+              child: FutureBuilder<List<AdminUserSummary>>(
+                future: ref.read(repositoryProvider).adminUsers(),
+                builder: (_, snapshot) => _StatTile(
+                  icon: Icons.people,
+                  color: Colors.blue,
+                  label: 'Pengguna Aktif',
+                  value: '${snapshot.data?.where((u) => u.active).length ?? 0}',
+                ),
+              ),
             ),
           ],
         ),
@@ -130,10 +134,10 @@ class _Summary extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _Gauge(label: 'Organik', value: avgOrganic, color: Colors.green),
+                    child: _Gauge(label: 'Organik', value: organic, color: Colors.green),
                   ),
                   Expanded(
-                    child: _Gauge(label: 'Anorganik', value: avgInorganic, color: Colors.orange),
+                    child: _Gauge(label: 'Anorganik', value: inorganic, color: Colors.orange),
                   ),
                 ],
               ),
@@ -144,9 +148,26 @@ class _Summary extends StatelessWidget {
         SectionCard(
           child: Column(
             children: [
-              SectionHeader(title: 'Tren Setoran Hari Ini', icon: Icons.show_chart),
+              SectionHeader(title: 'Berat Sampah per Hari', icon: Icons.show_chart),
               const SizedBox(height: 12),
-              _MiniChart(values: const [18, 32, 26, 48, 41, 62, 55, 74], color: p.brand),
+              FutureBuilder<List<AdminHistoryRecord>>(
+                future: ref.read(repositoryProvider).adminHistory(),
+                builder: (_, snapshot) {
+                  final rows = snapshot.data ?? const <AdminHistoryRecord>[];
+                  final totals = <int, double>{};
+                  for (final row in rows) {
+                    final key = row.time.toLocal().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    totals[key] = (totals[key] ?? 0) + row.weightKg;
+                  }
+                  final now = DateTime.now();
+                  final values = List.generate(7, (index) {
+                    final day = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - index));
+                    final key = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    return totals[key] ?? 0;
+                  });
+                  return _MiniChart(values: values, color: p.brand);
+                },
+              ),
             ],
           ),
         ),
@@ -208,40 +229,80 @@ class _Gauge extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 8),
-      Text(label),
+      Text(label, style: context.text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      Text(
+        value >= 90
+            ? 'Kritis / penuh'
+            : value >= 75
+            ? 'Perlu diangkat'
+            : 'Kapasitas aman',
+        style: context.text.bodySmall?.copyWith(
+          color: value >= 90
+              ? context.palette.error
+              : value >= 75
+              ? context.palette.warning
+              : context.palette.success,
+        ),
+      ),
     ],
   );
 }
 
 class _MiniChart extends StatelessWidget {
   const _MiniChart({required this.values, required this.color});
-  final List<int> values;
+  final List<double> values;
   final Color color;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 120,
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        for (final value in values)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Container(
-                height: value * 1.15,
-                decoration: BoxDecoration(color: color.withValues(alpha: .75), borderRadius: BorderRadius.circular(8)),
+  Widget build(BuildContext context) {
+    final maxValue = values.fold<double>(0, (max, value) => value > max ? value : max);
+    final now = DateTime.now();
+    return SizedBox(
+      height: 150,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var index = 0; index < values.length; index++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${values[index].toStringAsFixed(values[index] % 1 == 0 ? 0 : 1)} kg',
+                      style: context.text.labelSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      height: maxValue == 0 ? 4 : 100 * (values[index] / maxValue),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: values[index] == 0 ? .18 : .85),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      DateFormat('E', 'id_ID').format(now.subtract(Duration(days: 6 - index))),
+                      style: context.text.labelSmall?.copyWith(color: context.palette.textMuted),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _Users extends StatefulWidget {
-  const _Users({required this.users, required this.search});
-  final List<_ManagedUser> users;
+  const _Users({required this.users, required this.search, required this.loading, this.error});
+  final List<AdminUserSummary> users;
   final TextEditingController search;
+  final bool loading;
+  final Object? error;
   @override
   State<_Users> createState() => _UsersState();
 }
@@ -251,6 +312,12 @@ class _UsersState extends State<_Users> {
   Widget build(BuildContext context) {
     final query = widget.search.text.toLowerCase();
     final filtered = widget.users.where((u) => '${u.name} ${u.email} ${u.id}'.toLowerCase().contains(query)).toList();
+    if (widget.loading) {
+      return const Center(
+        child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()),
+      );
+    }
+    if (widget.error != null) return ErrorView(error: widget.error!, onRetry: () => setState(() {}));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -314,12 +381,12 @@ class _MachineManagement extends ConsumerWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       FilledButton.icon(
-        onPressed: () => _configure(context, ref, null),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah / Konfigurasi Mesin'),
+        onPressed: machines.isEmpty ? null : () => _configure(context, ref, machines.first),
+        icon: const Icon(Icons.tune),
+        label: const Text('Konfigurasi Mesin'),
       ),
       const SizedBox(height: 12),
-      for (final machine in machines)
+      for (final machine in machines.take(1))
         SectionCard(
           padding: const EdgeInsets.all(12),
           child: ListTile(
@@ -336,7 +403,7 @@ class _MachineManagement extends ConsumerWidget {
 
   Future<void> _configure(BuildContext context, WidgetRef ref, Machine? machine) async {
     final name = TextEditingController(text: machine?.name ?? 'SmartBIN Baru');
-    final location = TextEditingController(text: machine?.location ?? 'Lokasi kampus');
+    final location = TextEditingController(text: machine?.location ?? 'Lokasi pemasangan');
     final interval = TextEditingController(text: ref.read(sharedPrefsProvider).getString('machine_telemetry_interval') ?? '60');
     final ok = await showDialog<bool>(
       context: context,
@@ -378,9 +445,11 @@ class _MachineManagement extends ConsumerWidget {
 }
 
 class _HistoryAll extends StatefulWidget {
-  const _HistoryAll({required this.history, required this.search});
-  final List<_AdminHistory> history;
+  const _HistoryAll({required this.history, required this.search, required this.loading, this.error});
+  final List<AdminHistoryRecord> history;
   final TextEditingController search;
+  final bool loading;
+  final Object? error;
   @override
   State<_HistoryAll> createState() => _HistoryAllState();
 }
@@ -390,6 +459,12 @@ class _HistoryAllState extends State<_HistoryAll> {
   Widget build(BuildContext context) {
     final query = widget.search.text.toLowerCase();
     final filtered = widget.history.where((h) => '${h.id} ${h.userId} ${h.machine} ${h.type}'.toLowerCase().contains(query)).toList();
+    if (widget.loading) {
+      return const Center(
+        child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()),
+      );
+    }
+    if (widget.error != null) return ErrorView(error: widget.error!, onRetry: () => setState(() {}));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -412,7 +487,9 @@ class _HistoryAllState extends State<_HistoryAll> {
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(child: Icon(item.type == 'Organik' ? Icons.compost : Icons.recycling)),
               title: Text(item.id),
-              subtitle: Text('${item.userId} • ${item.machine}\n${item.kg} kg • ${item.points} poin • ${item.time}'),
+              subtitle: Text(
+                '${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${DateFormat('d MMM yyyy HH:mm', 'id_ID').format(item.time.toLocal())}',
+              ),
               isThreeLine: true,
               trailing: Text(item.type),
             ),
@@ -421,10 +498,25 @@ class _HistoryAllState extends State<_HistoryAll> {
     );
   }
 
-  Future<void> _exportCsv(BuildContext context, List<_AdminHistory> rows) async {
+  Future<void> _exportCsv(BuildContext context, List<AdminHistoryRecord> rows) async {
+    String csvValue(Object value) => '"${value.toString().replaceAll('"', '""')}"';
     const header = 'ID Transaksi,ID Pengguna,Mesin,Jenis,Berat kg,Poin,Waktu';
-    final data = rows.map((h) => '${h.id},${h.userId},${h.machine},${h.type},${h.kg},${h.points},${h.time}').join('\n');
-    await Clipboard.setData(ClipboardData(text: '$header\n$data'));
-    if (context.mounted) showSnack(context, 'CSV disalin ke clipboard (${rows.length} baris)');
+    final data = rows
+        .map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, h.time.toIso8601String()].map(csvValue).join(','))
+        .join('\n');
+    try {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/smartbin_history_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv');
+      await file.writeAsString('$header\n$data', flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/csv')],
+          text: 'Data history SmartBIN',
+        ),
+      );
+      if (context.mounted) showSnack(context, 'CSV siap diekspor (${rows.length} baris)');
+    } catch (e) {
+      if (context.mounted) showSnack(context, 'CSV gagal diekspor: $e');
+    }
   }
 }

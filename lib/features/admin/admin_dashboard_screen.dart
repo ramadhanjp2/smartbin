@@ -83,7 +83,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                           'MODE AKSES TERBATAS',
                           style: context.text.labelMedium?.copyWith(color: p.textPrimary, fontWeight: FontWeight.w800),
                         ),
-                        Text('Khusus Admin & Petugas Mesin Kampus', style: context.text.bodySmall?.copyWith(color: p.textSecondary)),
+                        Text('Khusus Admin & Pengelola Mesin SmartBIN', style: context.text.bodySmall?.copyWith(color: p.textSecondary)),
                       ],
                     ),
                   ),
@@ -93,7 +93,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
             SectionCard(
-              onTap: () => context.push('/admin/manage'),
+              onTap: () => context.go('/admin/users'),
               padding: const EdgeInsets.all(14),
               child: const ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -444,7 +444,7 @@ class _RatesConfigState extends ConsumerState<_RatesConfig> {
               icon: Icons.tune,
               trailing: Text('MQTT Retained', style: context.text.labelMedium?.copyWith(color: p.textMuted)),
             ),
-            Text('Nilai poin disinkronkan otomatis ke seluruh armada SmartBIN kampus.', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+            Text('Nilai poin disinkronkan otomatis ke seluruh mesin SmartBIN.', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
             const SizedBox(height: 12),
             _Stepper(
               badge: 'ANO',

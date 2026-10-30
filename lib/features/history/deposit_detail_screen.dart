@@ -261,7 +261,7 @@ class _Body extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       d.type == WasteType.organik
-                          ? 'Sampah organik ini bisa diolah menjadi kompos untuk taman kampus. Terima kasih, pahlawan hijau!'
+                          ? 'Sampah organik ini bisa diolah menjadi kompos untuk lingkungan sekitar. Terima kasih, pahlawan hijau!'
                           : 'Material anorganik ini siap didaur ulang, bukan berakhir di TPA. Terima kasih, pahlawan hijau!',
                       style: context.text.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                     ),

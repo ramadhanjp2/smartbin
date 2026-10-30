@@ -166,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               const SizedBox(height: 8),
               Text(
-                'Green Campus Initiative · Terintegrasi dengan Sensor IoT SmartBIN',
+                'Smart Waste Management · Terintegrasi dengan Sensor IoT SmartBIN',
                 textAlign: TextAlign.center,
                 style: context.text.bodySmall?.copyWith(color: p.textMuted),
               ),

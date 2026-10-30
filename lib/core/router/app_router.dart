@@ -55,9 +55,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => DepositDetailScreen(transactionId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/rates', builder: (_, _) => const RatesGuideScreen()),
-      GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardScreen()),
-      GoRoute(path: '/admin/manage', builder: (_, _) => const AdminManagementScreen()),
-      GoRoute(path: '/admin/manage', builder: (_, _) => const AdminManagementScreen()),
+      StatefulShellRoute.indexedStack(
+        builder: (_, _, shell) => MainShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminDashboardScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/admin/users', builder: (_, _) => const AdminManagementScreen(initialTab: 1))],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/admin/machines', builder: (_, _) => const AdminManagementScreen(initialTab: 2))],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/admin/history', builder: (_, _) => const AdminManagementScreen(initialTab: 3))],
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => MainShell(shell: shell),
         branches: [

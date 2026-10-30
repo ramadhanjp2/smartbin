@@ -131,6 +131,20 @@ export class SmartbinController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @Get("admin/users")
+  adminUsers(@Req() req: AuthenticatedRequest): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.adminUsers();
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get("admin/history")
+  adminHistory(@Req() req: AuthenticatedRequest): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    return this.service.adminHistory();
+  }
+
+  @UseGuards(AccessTokenGuard)
   @Put("admin/rates")
   updateRates(
     @Req() req: AuthenticatedRequest,
