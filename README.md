@@ -501,7 +501,7 @@ git fetch origin
 git pull --ff-only origin main
 ```
 
-Sebelum migrasi, salin `.env` sebagai cadangan di lokasi aman dan buat backup database. Pastikan `DB_SYNCHRONIZE=false` di `.env` production dan semua secret production tetap sama. Jangan membagikan atau memasukkan `.env`/backup ke Git.
+Sebelum migrasi, salin `.env` sebagai cadangan di lokasi aman dan buat backup database. Pastikan `DB_SYNCHRONIZE=false` di `.env` production dan semua secret production tetap sama. Backend API sekarang membaca `.env` dari bind mount, jadi file itu harus ada di direktori `backend` pada host sebelum Compose dijalankan; jangan membagikan atau memasukkan `.env`/backup ke Git.
 
 ```bash
 env_backup="$HOME/smartbin-backend.env.$(date +%Y%m%d-%H%M%S).backup"
@@ -519,9 +519,11 @@ docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "
 Pastikan baris mesin `bin-01` dan `bin-02` tersedia di tabel `machines` sesuai `MQTT_DEVICE_MACHINE_MAP`; seed `docs/seed.sql` menyiapkan keduanya untuk setup demo. Setelah backup dan migrasi sukses, build dan recreate **hanya API** agar MySQL, MongoDB, serta volume foto/telemetri tetap berjalan:
 
 ```bash
-docker compose up -d --build api
+mkdir -p logs
+docker compose up -d --build --force-recreate api
 docker compose ps
 docker compose logs --tail=100 api
+tail -n 100 logs/api.log
 curl --fail https://api-smartbin.ramadhanjp.my.id/api/v1/health
 ```
 
@@ -676,6 +678,8 @@ final response = await http.get(
 ```
 
 Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_SUBSCRIBE_TOPIC`, dan `MQTT_DEVICE_MACHINE_MAP` pada `backend/.env`. Gateway memakai `telemetry/auth`, `telemetry/deposit`, `telemetry/status`; balasan dan command memakai topic `command/...` pada pola yang sama. Setelah konfigurasi berubah, jalankan `docker compose up -d --build api`. Detail payload, QoS, ACL dan LWT ada di [`backend/docs/mqtt-smartbin.md`](backend/docs/mqtt-smartbin.md); flow perangkat yang diselaraskan ada di [`backend/docs/Alur SmartBIN v2 — Spesifikasi Lengkap.md`](backend/docs/Alur%20SmartBIN%20v2%20%E2%80%94%20Spesifikasi%20Lengkap.md).
+
+Backend API membaca konfigurasi langsung dari `backend/.env` yang dipasang read-only sebagai `/app/.env` di container; Compose juga memakai file lokal tersebut untuk konfigurasi service database. Pertahankan `.env` di host dan jangan masukkan ke Git. Log API ditulis ke `backend/logs/api.log` (bind mount) sekaligus tetap tersedia melalui `docker compose logs`; log Docker memakai rotasi 10 MiB × 5 file. Atur `API_LOG_DIR` pada `.env` jika direktori log host ingin dipindahkan. Terapkan kebijakan rotasi/retensi host pada file bind-mount sesuai kebutuhan disk.
 
 MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, receivedAt)`, `(topic, receivedAt)`, TTL `receivedAt`, snapshot unik `deviceId`, serta command `(deviceId, createdAt)`/unik `commandId`. Data event kedaluwarsa mengikuti `MONGO_TELEMETRY_TTL_SECONDS` (default 90 hari).
 

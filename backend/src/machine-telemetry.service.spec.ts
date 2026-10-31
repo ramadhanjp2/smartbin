@@ -4,6 +4,21 @@ import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
 
 describe("MachineTelemetryService", () => {
+  it("builds a MongoDB URI from mounted credentials when no URI is configured", () => {
+    const service = new MachineTelemetryService(
+      new ConfigService({
+        MONGO_USERNAME: "smart bin",
+        MONGO_PASSWORD: "pa:ss/word",
+        MONGO_DATABASE: "smartbin_realtime",
+      }),
+      {} as unknown as SmartbinService,
+    );
+
+    expect(service["buildMongoUriFromConfig"]()).toBe(
+      "mongodb://smart%20bin:pa%3Ass%2Fword@mongodb:27017/smartbin_realtime?authSource=admin",
+    );
+  });
+
   it("does not include the inserted event _id in the machine snapshot update", async () => {
     const insertedId = new ObjectId();
     const updateOne = jest.fn().mockResolvedValue({ acknowledged: true });

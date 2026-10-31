@@ -35,11 +35,21 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async connectMongo(): Promise<void> {
-    const uri = this.config.get<string>("MONGO_URI");
-    if (!uri) throw new Error("MONGO_URI is required.");
+    const uri =
+      this.config.get<string>("MONGO_URI") ?? this.buildMongoUriFromConfig();
     this.mongo = new MongoClient(uri);
     await this.mongo.connect();
     await this.createIndexes();
+  }
+
+  private buildMongoUriFromConfig(): string {
+    const username = this.config.getOrThrow<string>("MONGO_USERNAME");
+    const password = this.config.getOrThrow<string>("MONGO_PASSWORD");
+    const database = this.config.get<string>(
+      "MONGO_DATABASE",
+      "smartbin_realtime",
+    );
+    return `mongodb://${encodeURIComponent(username)}:${encodeURIComponent(password)}@mongodb:27017/${encodeURIComponent(database)}?authSource=admin`;
   }
 
   private database() {
