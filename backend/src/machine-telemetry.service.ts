@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { MongoClient, Collection, Document, ObjectId } from "mongodb";
+import { MongoClient, Collection, Document } from "mongodb";
 import mqtt, { MqttClient } from "mqtt";
 import { Observable, Subject } from "rxjs";
 import { SmartbinService } from "./smartbin.service";
@@ -183,20 +183,21 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
       receivedAt,
       payload: safeBody,
     };
+    const latestDocument = { ...document, updatedAt: receivedAt };
 
     const db = this.database();
     try {
-      await db.collection("machine_events").insertOne(document);
+      const event = await db.collection("machine_events").insertOne(document);
       await db.collection("machine_latest").updateOne(
         { deviceId },
         {
-          $set: { ...document, updatedAt: receivedAt },
+          $set: latestDocument,
           $setOnInsert: { firstSeenAt: receivedAt },
         },
         { upsert: true },
       );
       this.events.next({
-        data: { ...document, _id: new ObjectId().toString() },
+        data: { ...document, _id: event.insertedId },
       });
     } catch (error) {
       console.error("Failed to persist MQTT telemetry", error);

@@ -699,3 +699,4 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 | `The argument type 'TextTheme' can't be assigned to 'TextTheme?'` | Memakai `GoogleFonts.xxxTextTheme()` | Pakai `GoogleFonts.plusJakartaSans()` per gaya teks |
 | Font masih default / tidak muncul | Font Google diunduh saat pertama kali jalan | Pastikan HP terhubung internet saat pertama membuka aplikasi |
 | HP tidak muncul di `flutter devices` | USB debugging mati atau izin belum diberikan | Aktifkan Opsi Pengembang → USB debugging, lalu izinkan pop-up di HP |
+| `Performing an update on the path '_id' would modify the immutable field '_id'` | Snapshot MongoDB menerima `_id` milik event telemetry | Perbarui backend ke versi terbaru; event dan snapshot kini disimpan memakai dokumen update yang terpisah |
