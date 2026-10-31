@@ -36,7 +36,7 @@ describe("MachineTelemetryService", () => {
     };
     const mongo = { db: jest.fn(() => database) };
     const smartbin = {
-      updateMachineFromMqtt: jest.fn().mockResolvedValue(undefined),
+      validateMqttDevice: jest.fn().mockResolvedValue(undefined),
     };
     const service = new MachineTelemetryService(
       new ConfigService(),
@@ -55,5 +55,38 @@ describe("MachineTelemetryService", () => {
     expect(update.$set).not.toHaveProperty("_id");
     expect(update.$set).toHaveProperty("deviceId", "esp1");
     expect(machineEvents.insertOne).toHaveBeenCalledTimes(1);
+    expect(smartbin.validateMqttDevice).toHaveBeenCalledWith("esp1");
+  });
+
+  it("does not let non-status telemetry overwrite the latest machine snapshot", async () => {
+    const updateOne = jest.fn();
+    const machineEvents = {
+      insertOne: jest.fn().mockResolvedValue({
+        acknowledged: true,
+        insertedId: new ObjectId(),
+      }),
+    };
+    const database = {
+      collection: jest.fn((name: string) =>
+        name === "machine_events"
+          ? machineEvents
+          : { updateOne, findOne: jest.fn() },
+      ),
+    };
+    const service = new MachineTelemetryService(
+      new ConfigService(),
+      {} as unknown as SmartbinService,
+    );
+    service["mongo"] = {
+      db: jest.fn(() => database),
+    } as unknown as MongoClient;
+
+    await service["handleMessage"](
+      "smartbin/esp1/telemetry/sensor",
+      Buffer.from('{"timestamp":"2026-10-31T09:30:00Z","distance_cm":48}'),
+    );
+
+    expect(machineEvents.insertOne).toHaveBeenCalledTimes(1);
+    expect(updateOne).not.toHaveBeenCalled();
   });
 });

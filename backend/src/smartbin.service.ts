@@ -27,7 +27,6 @@ import {
   DepositQueryDto,
   IngestDepositDto,
   LoginDto,
-  MachineStatusDto,
   RegisterDto,
   UpdateMeDto,
   UpdateRatesDto,
@@ -541,7 +540,7 @@ export class SmartbinService implements OnModuleInit {
     }));
   }
 
-  async updateMachine(id: string, dto: UpdateMachineDto): Promise<unknown> {
+  async updateMachine(id: string, dto: UpdateMachineDto): Promise<void> {
     const machine = await this.machinesRepo.findOneBy({ id });
     if (!machine)
       throw new NotFoundException({
@@ -551,10 +550,9 @@ export class SmartbinService implements OnModuleInit {
     if (dto.name !== undefined) machine.name = dto.name;
     if (dto.location !== undefined) machine.location = dto.location;
     await this.machinesRepo.save(machine);
-    return this.machines();
   }
 
-  async machines(): Promise<unknown> {
+  async machines(): Promise<Record<string, unknown>[]> {
     const rows = await this.machinesRepo.find({ order: { name: "ASC" } });
     return rows.map((machine) => ({
       id: machine.id,
@@ -562,14 +560,14 @@ export class SmartbinService implements OnModuleInit {
       deviceId: this.deviceIdForMachineCode(machine.code),
       name: machine.name,
       location: machine.location,
-      status: machine.status,
-      lastSeen: machine.lastSeen?.toISOString() ?? null,
-      organicFill: machine.organicFill,
-      inorganicFill: machine.inorganicFill,
-      residuFill: machine.residuFill,
-      organicCmLeft: machine.organikCm,
-      inorganicCmLeft: machine.anorganikCm,
-      residuCmLeft: machine.residuCm,
+      status: "OFFLINE",
+      lastSeen: null,
+      organicFill: 0,
+      inorganicFill: 0,
+      residuFill: 0,
+      organicCmLeft: 0,
+      inorganicCmLeft: 0,
+      residuCmLeft: 0,
     }));
   }
 
@@ -601,6 +599,25 @@ export class SmartbinService implements OnModuleInit {
         code: "MACHINE_NOT_FOUND",
         message: "Perangkat MQTT tidak terdaftar.",
       });
+  }
+
+  async validateMqttDevice(deviceId: string): Promise<void> {
+    const machineCode = this.machineCodeForDeviceId(deviceId);
+    if (
+      !machineCode ||
+      !(await this.machinesRepo.findOneBy({ code: machineCode }))
+    )
+      throw new NotFoundException(
+        `MQTT device is not provisioned: ${deviceId}`,
+      );
+  }
+
+  async resolveStatusDeviceId(
+    machineId: string,
+    machineKey: string | undefined,
+  ): Promise<string> {
+    this.assertMachineKey(machineKey);
+    return this.resolveDeviceId(machineId);
   }
 
   async assertCaptureAccess(
@@ -723,50 +740,6 @@ export class SmartbinService implements OnModuleInit {
     };
   }
 
-  async updateMachineFromMqtt(
-    deviceId: string,
-    body: Record<string, unknown>,
-  ): Promise<void> {
-    const machineCode = this.machineCodeForDeviceId(deviceId);
-    if (!machineCode)
-      throw new NotFoundException(`MQTT device is not mapped: ${deviceId}`);
-    const machine = await this.machinesRepo.findOneBy({ code: machineCode });
-    if (!machine)
-      throw new NotFoundException(`Machine is not provisioned: ${machineCode}`);
-    const state = body.state;
-    if (
-      state === "IDLE" ||
-      state === "SIBUK" ||
-      state === "SIAP" ||
-      state === "PENUH" ||
-      state === "GANGGUAN" ||
-      state === "OFFLINE"
-    )
-      machine.status = state;
-    const compartments = body.compartments;
-    if (compartments && typeof compartments === "object") {
-      const fills = compartments as Record<string, unknown>;
-      const organicFill = this.fillPercentage(fills.organik_fill_pct);
-      const inorganicFill = this.fillPercentage(fills.anorganik_fill_pct);
-      const residuFill = this.fillPercentage(fills.residu_fill_pct);
-      if (organicFill !== null) machine.organicFill = organicFill;
-      if (inorganicFill !== null) machine.inorganicFill = inorganicFill;
-      if (residuFill !== null) machine.residuFill = residuFill;
-    }
-    const distances = body.sekat_cm;
-    if (distances && typeof distances === "object") {
-      const values = distances as Record<string, unknown>;
-      const organicCm = this.sensorDistance(values.organik);
-      const inorganicCm = this.sensorDistance(values.anorganik);
-      const residuCm = this.sensorDistance(values.residu);
-      if (organicCm !== null) machine.organikCm = organicCm;
-      if (inorganicCm !== null) machine.anorganikCm = inorganicCm;
-      if (residuCm !== null) machine.residuCm = residuCm;
-    }
-    machine.lastSeen = new Date();
-    await this.machinesRepo.save(machine);
-  }
-
   private async createDeposit(
     machine: MachineEntity,
     transactionId: string,
@@ -835,8 +808,6 @@ export class SmartbinService implements OnModuleInit {
             }),
           );
         }
-        machine.lastSeen = new Date();
-        await manager.getRepository(MachineEntity).save(machine);
         return saved;
       });
       return {
@@ -860,32 +831,6 @@ export class SmartbinService implements OnModuleInit {
       }
       throw error;
     }
-  }
-
-  async updateMachineStatus(
-    machineId: string,
-    machineKey: string | undefined,
-    dto: MachineStatusDto,
-  ): Promise<unknown> {
-    this.assertMachineKey(machineKey);
-    const machine = await this.machinesRepo.findOneBy({ id: machineId });
-    if (!machine)
-      throw new NotFoundException({
-        code: "MACHINE_NOT_FOUND",
-        message: "Mesin tidak ditemukan.",
-      });
-    machine.status = dto.status;
-    if (dto.organicFill !== undefined) machine.organicFill = dto.organicFill;
-    if (dto.inorganicFill !== undefined)
-      machine.inorganicFill = dto.inorganicFill;
-    if (dto.residuFill !== undefined) machine.residuFill = dto.residuFill;
-    machine.lastSeen = new Date();
-    await this.machinesRepo.save(machine);
-    return {
-      id: machine.id,
-      status: machine.status,
-      lastSeen: machine.lastSeen.toISOString(),
-    };
   }
 
   async notifications(userId: string): Promise<unknown> {
@@ -1053,22 +998,6 @@ export class SmartbinService implements OnModuleInit {
       if (configuredMachineCode === machineCode && deviceId) return deviceId;
     }
     return null;
-  }
-
-  private fillPercentage(value: unknown): number | null {
-    if (typeof value !== "number" || !Number.isFinite(value)) return null;
-    return Math.max(0, Math.min(100, Math.round(value)));
-  }
-
-  private sensorDistance(value: unknown): number | null {
-    if (
-      typeof value !== "number" ||
-      !Number.isInteger(value) ||
-      value < 0 ||
-      value > 65_535
-    )
-      return null;
-    return value;
   }
 
   private hashToken(token: string): string {

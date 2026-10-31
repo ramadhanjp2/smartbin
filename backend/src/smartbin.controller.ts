@@ -41,6 +41,7 @@ import {
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
 import { CaptureStorageService } from "./capture-storage.service";
+import { mergeMachineTelemetry } from "./machine-telemetry.mapper";
 import { map, Observable } from "rxjs";
 
 @Controller()
@@ -238,7 +239,9 @@ export class SmartbinController {
     @Body() dto: UpdateMachineDto,
   ): Promise<unknown> {
     this.service.assertAdmin(req.user.role);
-    return this.service.updateMachine(id, dto);
+    return this.service
+      .updateMachine(id, dto)
+      .then(() => this.machinesWithTelemetry());
   }
 
   @UseGuards(AccessTokenGuard)
@@ -260,8 +263,8 @@ export class SmartbinController {
 
   @UseGuards(AccessTokenGuard)
   @Get("machines")
-  machines(): Promise<unknown> {
-    return this.service.machines();
+  async machines(): Promise<unknown> {
+    return this.machinesWithTelemetry();
   }
 
   @UseGuards(AccessTokenGuard)
@@ -339,7 +342,26 @@ export class SmartbinController {
     @Headers("x-machine-api-key") machineKey: string | undefined,
     @Body() dto: MachineStatusDto,
   ): Promise<unknown> {
-    return this.service.updateMachineStatus(id, machineKey, dto);
+    return this.service
+      .resolveStatusDeviceId(id, machineKey)
+      .then((deviceId) =>
+        this.telemetry.recordStatus(deviceId, {
+          state: dto.status,
+          timestamp: new Date().toISOString(),
+          compartments: {
+            ...(dto.organicFill !== undefined
+              ? { organik_fill_pct: dto.organicFill }
+              : {}),
+            ...(dto.inorganicFill !== undefined
+              ? { anorganik_fill_pct: dto.inorganicFill }
+              : {}),
+            ...(dto.residuFill !== undefined
+              ? { residu_fill_pct: dto.residuFill }
+              : {}),
+          },
+        }),
+      )
+      .then(() => ({ success: true }));
   }
 
   @UseGuards(AccessTokenGuard)
@@ -361,5 +383,13 @@ export class SmartbinController {
   @Post("notifications/read-all")
   markAllRead(@Req() req: AuthenticatedRequest): Promise<{ success: true }> {
     return this.service.markAllNotificationsRead(req.user.sub);
+  }
+
+  private async machinesWithTelemetry(): Promise<Record<string, unknown>[]> {
+    const [machines, snapshots] = await Promise.all([
+      this.service.machines(),
+      this.telemetry.latestStatuses(),
+    ]);
+    return mergeMachineTelemetry(machines, snapshots);
   }
 }

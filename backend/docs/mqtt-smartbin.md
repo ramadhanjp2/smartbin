@@ -323,9 +323,9 @@ Publish gateway ke `smartbin/esp1/telemetry/status` setiap 10 detik dan saat sta
 }
 ```
 
-Nilai `state`: `IDLE`, `SIBUK`, `OFFLINE`, atau `GANGGUAN`; gunakan `PENUH` bila perangkat menerapkan status ringkas itu. Backend mengubah status dan data kompartemen pada MySQL dari payload ini. `device_id` harus sama dengan ID pada topik.
+Nilai `state`: `IDLE`, `SIBUK`, `OFFLINE`, atau `GANGGUAN`; gunakan `PENUH` bila perangkat menerapkan status ringkas itu. Backend menyimpan event ke MongoDB `machine_events` dan menjadikan `machine_latest` sumber status, kapasitas, jarak sensor, serta heartbeat terkini. Metadata master mesin (nama, lokasi, dan kode) tetap di MySQL; endpoint daftar mesin menggabungkan kedua sumber. `device_id` harus sama dengan ID pada topik dan terpetakan ke kode mesin yang terdaftar di MySQL.
 
-`telemetry/status` adalah snapshot kanonis untuk memperbarui status, kapasitas, dan jarak sensor di MySQL. Topic `telemetry/sensor` pada tabel di atas tetap tersedia untuk diagnostik sensor mentah/kompatibilitas; backend menyimpannya sebagai event MongoDB, tetapi tidak menggunakannya sebagai pengganti snapshot status.
+`telemetry/status` adalah snapshot kanonis untuk memperbarui kondisi terkini di MongoDB. Topic `telemetry/sensor` pada tabel di atas tetap tersedia untuk diagnostik sensor mentah/kompatibilitas; backend menyimpannya sebagai event MongoDB, tetapi tidak menggunakannya sebagai pengganti snapshot status. Hanya pesan `status` yang memperbarui `machine_latest`; event `auth`, `deposit`, dan `sensor` tetap tercatat di `machine_events` tanpa menimpa snapshot status.
 
 ### 8.2. Validasi kartu dan setoran
 

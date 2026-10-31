@@ -469,7 +469,7 @@ Pemindaian standar ini tidak membaca NIK atau data pribadi dari chip dan bukan a
 
 ## Backend NestJS + MySQL
 
-Backend berada di [`backend/`](backend/) dan menggunakan NestJS: MySQL 8.4 menyimpan akun, kartu, mesin master, transaksi, ledger, tarif, sesi, dan notifikasi; MongoDB 8 menyimpan telemetry MQTT ber-volume tinggi, snapshot terbaru, dan riwayat command. API memakai prefix `/api/v1`. Identitas awal aplikasi tetap NIK 16 digit yang disimpan sebagai HMAC berkunci, tanpa NIM atau relasi kampus. Aplikasi lintas lokasi hanya menggunakan endpoint REST/SSE backend dan tidak menyimpan kredensial broker MQTT.
+Backend berada di [`backend/`](backend/) dan menggunakan NestJS: MySQL 8.4 menyimpan akun, kartu, metadata/master mesin, transaksi, ledger, tarif, sesi, dan notifikasi; MongoDB 8 menyimpan event MQTT, snapshot status mesin terkini, serta riwayat command. MongoDB menjadi sumber kebenaran untuk status, kapasitas, jarak sensor, dan heartbeat; endpoint daftar mesin menggabungkan snapshot MongoDB dengan metadata mesin MySQL. API memakai prefix `/api/v1`. Identitas awal aplikasi tetap NIK 16 digit yang disimpan sebagai HMAC berkunci, tanpa NIM atau relasi kampus. Aplikasi lintas lokasi hanya menggunakan endpoint REST/SSE backend dan tidak menyimpan kredensial broker MQTT.
 
 ### Menjalankan dengan Docker Compose
 
@@ -671,7 +671,7 @@ erDiagram
 
 ### MQTT, MongoDB, dan realtime mobile
 
-Backend terhubung ke broker melalui WSS/TLS 443 (`MQTT_URL=wss://mqtt-smartbin.ramadhanjp.my.id:443/mqtt`), berlangganan `smartbin/+/telemetry/#`, menyimpan event ke koleksi MongoDB `machine_events`, memperbarui `machine_latest` dan ringkasan mesin MySQL, lalu menyiarkan perubahan melalui SSE `GET /api/v1/machines/realtime`. Mobile memakai REST dengan JWT dan tidak menyimpan credential MQTT. API menyediakan riwayat `GET /api/v1/machines/{deviceId}/telemetry`; foto memakai endpoint JWT yang sama di semua layar setoran.
+Backend terhubung ke broker melalui WSS/TLS 443 (`MQTT_URL=wss://mqtt-smartbin.ramadhanjp.my.id:443/mqtt`), berlangganan `smartbin/+/telemetry/#`, menyimpan semua event ke koleksi MongoDB `machine_events`, dan menyimpan hanya snapshot `telemetry/status` terbaru per perangkat di `machine_latest`. Endpoint daftar mesin menggabungkan snapshot MongoDB dengan metadata mesin MySQL; heartbeat MQTT tidak lagi memperbarui row MySQL. Snapshot juga menyiarkan perubahan melalui SSE `GET /api/v1/machines/realtime`. Mobile memakai REST dengan JWT dan tidak menyimpan credential MQTT. API menyediakan riwayat `GET /api/v1/machines/{deviceId}/telemetry`; foto memakai endpoint JWT yang sama di semua layar setoran.
 
 ```dart
 final response = await http.get(

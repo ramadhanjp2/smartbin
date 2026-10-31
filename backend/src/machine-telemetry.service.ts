@@ -214,7 +214,7 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
         timestamp: new Date().toISOString(),
       });
     } else if (kind === "status") {
-      await this.smartbin.updateMachineFromMqtt(deviceId, body);
+      await this.smartbin.validateMqttDevice(deviceId);
     }
 
     const deviceTime = this.parseDate(body.timestamp);
@@ -234,14 +234,16 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     const db = this.database();
     try {
       const event = await db.collection("machine_events").insertOne(document);
-      await db.collection("machine_latest").updateOne(
-        { deviceId },
-        {
-          $set: latestDocument,
-          $setOnInsert: { firstSeenAt: receivedAt },
-        },
-        { upsert: true },
-      );
+      if (kind === "status") {
+        await db.collection("machine_latest").updateOne(
+          { deviceId },
+          {
+            $set: latestDocument,
+            $setOnInsert: { firstSeenAt: receivedAt },
+          },
+          { upsert: true },
+        );
+      }
       this.logger.log(
         JSON.stringify({
           event: "mqtt.telemetry_persisted",
@@ -287,10 +289,83 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     }
     return db
       .collection("machine_latest")
-      .find({})
+      .find({ kind: "status" })
       .sort({ updatedAt: -1 })
       .limit(limit)
       .toArray();
+  }
+
+  async latestStatuses(): Promise<Document[]> {
+    return this.database()
+      .collection("machine_latest")
+      .find({ kind: "status" })
+      .toArray();
+  }
+
+  async recordStatus(
+    deviceId: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    await this.smartbin.validateMqttDevice(deviceId);
+    const topic = `smartbin/${deviceId}/telemetry/status`;
+    const receivedAt = new Date();
+    const previous = await this.database()
+      .collection("machine_latest")
+      .findOne({ deviceId, kind: "status" });
+    const previousPayload =
+      previous?.payload && typeof previous.payload === "object"
+        ? (previous.payload as Document)
+        : {};
+    const mergedPayload = { ...previousPayload, ...payload };
+    for (const field of ["compartments", "sekat_cm"]) {
+      const current = previousPayload[field];
+      const incoming = payload[field];
+      if (
+        current &&
+        typeof current === "object" &&
+        incoming &&
+        typeof incoming === "object"
+      ) {
+        mergedPayload[field] = {
+          ...(current as Document),
+          ...(incoming as Document),
+        };
+      }
+    }
+    const document = {
+      deviceId,
+      kind: "status",
+      topic,
+      deviceTime: this.parseDate(payload.timestamp),
+      receivedAt,
+      payload,
+    };
+    const latestDocument = {
+      ...document,
+      payload: mergedPayload,
+      updatedAt: receivedAt,
+    };
+    const db = this.database();
+    const event = await db.collection("machine_events").insertOne(document);
+    await db.collection("machine_latest").updateOne(
+      { deviceId },
+      {
+        $set: latestDocument,
+        $setOnInsert: { firstSeenAt: receivedAt },
+      },
+      { upsert: true },
+    );
+    this.logger.log(
+      JSON.stringify({
+        event: "mqtt.telemetry_persisted",
+        deviceId,
+        kind: "status",
+        topic,
+        source: "http",
+      }),
+      "MQTT",
+    );
+    this.events.next({ data: { ...document, _id: event.insertedId } });
   }
 
   async command(
