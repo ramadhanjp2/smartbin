@@ -13,6 +13,54 @@ import { CaptureStorageService } from "./capture-storage.service";
 import { SmartbinService } from "./smartbin.service";
 
 describe("SmartbinService token response", () => {
+  it("returns all admin deposits, including unlinked cards and residu", async () => {
+    const deposits = {
+      find: jest.fn().mockResolvedValue([
+        {
+          transactionId: "unlinked-test",
+          userId: null,
+          machine: { name: "SmartBIN Unit #01" },
+          machineId: "machine-1",
+          type: "RESIDU",
+          weightG: 500,
+          points: 0,
+          deviceTime: new Date("2026-10-31T12:00:00.000Z"),
+        },
+      ]),
+    };
+    const service = new SmartbinService(
+      {} as Repository<UserEntity>,
+      {} as Repository<CardEntity>,
+      deposits as unknown as Repository<DepositEntity>,
+      {} as Repository<PointLedgerEntity>,
+      {} as Repository<MachineEntity>,
+      {} as Repository<RateEntity>,
+      {} as Repository<NotificationEntity>,
+      {} as Repository<RefreshSessionEntity>,
+      {} as DataSource,
+      {} as JwtService,
+      new ConfigService(),
+      {} as CaptureStorageService,
+    );
+
+    await expect(service.adminHistory()).resolves.toEqual([
+      {
+        id: "unlinked-test",
+        userId: "-",
+        machine: "SmartBIN Unit #01",
+        type: "Residu",
+        weightKg: 0.5,
+        points: 0,
+        time: "2026-10-31T12:00:00.000Z",
+      },
+    ]);
+    expect(deposits.find).toHaveBeenCalledWith({
+      relations: { machine: true, user: true },
+      order: { deviceTime: "DESC" },
+      take: 1000,
+    });
+  });
+
   it("includes the linked card when login or refresh issues tokens", async () => {
     const linkedAt = new Date("2026-10-31T12:00:00.000Z");
     const card = {

@@ -559,12 +559,15 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
 | GET | `/api/v1/captures/:transactionId` | Pemilik setoran atau admin (JWT) |
 | POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
+| GET | `/api/v1/admin/history` | Admin (semua setoran, termasuk setoran tanpa KTP tertaut) |
 | PUT, POST | `/api/v1/admin/rates`, `/api/v1/machines/:id/reset` | Admin |
 | POST | `/api/v1/machines/:id/deposits`, `/api/v1/machines/:id/status` | Mesin (`X-Machine-Api-Key`) |
 | POST | `/api/v1/captures` | Laptop AI (`X-Machine-Api-Key`) |
 | GET | `/api/v1/machines/telemetry`, `/api/v1/machines/:deviceId/telemetry` | Pengguna |
 | GET | `/api/v1/machines/realtime` | Pengguna (SSE) |
 | POST | `/api/v1/machines/:deviceId/command` | Admin |
+
+Riwayat admin mengambil hingga 1.000 setoran terbaru dari MySQL, termasuk status `HELD`/`CREDITED` dan transaksi yang belum terkait ke pengguna. Setelah setoran MQTT baru masuk, tekan **Muat ulang riwayat** pada menu admin. Jenis `RESIDU` ditampilkan terpisah dan bernilai nol poin.
 
 Contoh registrasi:
 

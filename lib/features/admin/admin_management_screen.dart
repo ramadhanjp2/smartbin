@@ -55,9 +55,20 @@ class _AdminManagementScreenState extends ConsumerState<AdminManagementScreen> {
             },
             2 => _MachineManagement(machines: machines.value ?? const []),
             _ => switch (history) {
-              AsyncValue(:final value?) => _HistoryAll(history: value, loading: false, search: _search),
-              AsyncValue(:final error?) => _HistoryAll(history: const [], loading: false, error: error, search: _search),
-              _ => _HistoryAll(history: const [], loading: true, search: _search),
+              AsyncValue(:final value?) => _HistoryAll(
+                history: value,
+                loading: false,
+                search: _search,
+                onRefresh: () => ref.invalidate(adminHistoryProvider),
+              ),
+              AsyncValue(:final error?) => _HistoryAll(
+                history: const [],
+                loading: false,
+                error: error,
+                search: _search,
+                onRefresh: () => ref.invalidate(adminHistoryProvider),
+              ),
+              _ => _HistoryAll(history: const [], loading: true, search: _search, onRefresh: () => ref.invalidate(adminHistoryProvider)),
             },
           },
         ],
@@ -197,7 +208,12 @@ class _Gauge extends StatelessWidget {
               SizedBox(
                 width: 118,
                 height: 118,
-                child: CircularProgressIndicator(value: safeValue / 100, strokeWidth: 12, backgroundColor: color.withValues(alpha: .12), color: color),
+                child: CircularProgressIndicator(
+                  value: safeValue / 100,
+                  strokeWidth: 12,
+                  backgroundColor: color.withValues(alpha: .12),
+                  color: color,
+                ),
               ),
               Text('$safeValue%', style: context.text.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
             ],
@@ -206,9 +222,17 @@ class _Gauge extends StatelessWidget {
         const SizedBox(height: 8),
         Text(label, style: context.text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
         Text(
-          safeValue >= 90 ? 'Kritis / penuh' : safeValue >= 75 ? 'Perlu diangkat' : 'Kapasitas aman',
+          safeValue >= 90
+              ? 'Kritis / penuh'
+              : safeValue >= 75
+              ? 'Perlu diangkat'
+              : 'Kapasitas aman',
           style: context.text.bodySmall?.copyWith(
-            color: safeValue >= 90 ? context.palette.error : safeValue >= 75 ? context.palette.warning : context.palette.success,
+            color: safeValue >= 90
+                ? context.palette.error
+                : safeValue >= 75
+                ? context.palette.warning
+                : context.palette.success,
           ),
         ),
       ],
@@ -310,7 +334,10 @@ class _UsersState extends ConsumerState<_Users> {
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Edit pengguna')),
                   PopupMenuItem(value: 'toggle', child: Text(user.active ? 'Nonaktifkan' : 'Aktifkan')),
-                  const PopupMenuItem(value: 'delete', child: Text('Hapus pengguna', style: TextStyle(color: Colors.red))),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Hapus pengguna', style: TextStyle(color: Colors.red)),
+                  ),
                 ],
                 onSelected: (v) {
                   if (v == 'edit') _editUser(context, user);
@@ -335,16 +362,39 @@ class _UsersState extends ConsumerState<_Users> {
       builder: (_) => AlertDialog(
         title: const Text('Tambah pengguna'),
         content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: nik, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'NIK (16 digit)')),
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')),
-            TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
-            TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-            DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Peran'), items: const [
-              DropdownMenuItem(value: 'user', child: Text('Pengguna')),
-              DropdownMenuItem(value: 'admin', child: Text('Admin')),
-            ], onChanged: (value) => role = value ?? 'user'),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nik,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'NIK (16 digit)'),
+              ),
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Nama'),
+              ),
+              TextField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              TextField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: role,
+                decoration: const InputDecoration(labelText: 'Peran'),
+                items: const [
+                  DropdownMenuItem(value: 'user', child: Text('Pengguna')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                ],
+                onChanged: (value) => role = value ?? 'user',
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
@@ -354,7 +404,9 @@ class _UsersState extends ConsumerState<_Users> {
     );
     if (ok != true) return;
     try {
-      await ref.read(repositoryProvider).createAdminUser(nik: nik.text.trim(), name: name.text.trim(), email: email.text.trim(), password: password.text, role: role);
+      await ref
+          .read(repositoryProvider)
+          .createAdminUser(nik: nik.text.trim(), name: name.text.trim(), email: email.text.trim(), password: password.text, role: role);
       ref.invalidate(adminUsersProvider);
       if (context.mounted) showSnack(context, 'Pengguna berhasil ditambahkan');
     } catch (e) {
@@ -371,15 +423,36 @@ class _UsersState extends ConsumerState<_Users> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Edit pengguna'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')),
-          TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
-          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password baru (opsional)')),
-          DropdownButtonFormField<String>(initialValue: role, decoration: const InputDecoration(labelText: 'Peran'), items: const [
-            DropdownMenuItem(value: 'user', child: Text('Pengguna')),
-            DropdownMenuItem(value: 'admin', child: Text('Admin')),
-          ], onChanged: (value) => role = value ?? 'user'),
-        ])),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Nama'),
+              ),
+              TextField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              TextField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password baru (opsional)'),
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: role,
+                decoration: const InputDecoration(labelText: 'Peran'),
+                items: const [
+                  DropdownMenuItem(value: 'user', child: Text('Pengguna')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                ],
+                onChanged: (value) => role = value ?? 'user',
+              ),
+            ],
+          ),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Simpan')),
@@ -388,7 +461,15 @@ class _UsersState extends ConsumerState<_Users> {
     );
     if (ok != true) return;
     try {
-      await ref.read(repositoryProvider).updateAdminUser(user.id, name: name.text.trim(), email: email.text.trim(), role: role, password: password.text.isEmpty ? null : password.text);
+      await ref
+          .read(repositoryProvider)
+          .updateAdminUser(
+            user.id,
+            name: name.text.trim(),
+            email: email.text.trim(),
+            role: role,
+            password: password.text.isEmpty ? null : password.text,
+          );
       ref.invalidate(adminUsersProvider);
       if (context.mounted) showSnack(context, 'Pengguna berhasil diperbarui');
     } catch (e) {
@@ -407,14 +488,21 @@ class _UsersState extends ConsumerState<_Users> {
   }
 
   Future<void> _deleteUser(BuildContext context, AdminUserSummary user) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: const Text('Hapus pengguna?'),
-      content: Text('${user.name} akan dihapus permanen dari database.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), style: FilledButton.styleFrom(backgroundColor: Colors.red), child: const Text('Hapus')),
-      ],
-    ));
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Hapus pengguna?'),
+        content: Text('${user.name} akan dihapus permanen dari database.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
     if (confirmed != true) return;
     try {
       await ref.read(repositoryProvider).deleteAdminUser(user.id);
@@ -440,9 +528,7 @@ class _MachineManagement extends ConsumerWidget {
       ),
       const SizedBox(height: 12),
       if (machines.isEmpty)
-        const SectionCard(
-          child: Text('Mesin belum tersedia pada database. Setelah backend dijalankan ulang, mesin utama akan dibuat otomatis.'),
-        ),
+        const SectionCard(child: Text('Mesin belum tersedia pada database. Setelah backend dijalankan ulang, mesin utama akan dibuat otomatis.')),
       for (final machine in machines.take(1))
         SectionCard(
           padding: const EdgeInsets.all(12),
@@ -450,7 +536,9 @@ class _MachineManagement extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             leading: IconTile(icon: Icons.delete_sweep_outlined, size: 46),
             title: Text(machine.name),
-            subtitle: Text('${machine.location}\n${machine.status.label} • Organik ${machine.organicFill}% • Anorganik ${machine.inorganicFill}% • Residu ${machine.residuFill}%'),
+            subtitle: Text(
+              '${machine.location}\n${machine.status.label} • Organik ${machine.organicFill}% • Anorganik ${machine.inorganicFill}% • Residu ${machine.residuFill}%',
+            ),
             isThreeLine: true,
             trailing: IconButton(icon: const Icon(Icons.tune), tooltip: 'Konfigurasi', onPressed: () => _configure(context, ref, machine)),
           ),
@@ -516,16 +604,30 @@ class _MachineConfigDialogState extends State<_MachineConfigDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Nama mesin')),
-          TextField(controller: _location, decoration: const InputDecoration(labelText: 'Lokasi')),
-          TextField(controller: _interval, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Interval telemetry (detik)')),
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Nama mesin'),
+          ),
+          TextField(
+            controller: _location,
+            decoration: const InputDecoration(labelText: 'Lokasi'),
+          ),
+          TextField(
+            controller: _interval,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Interval telemetry (detik)'),
+          ),
         ],
       ),
     ),
     actions: [
       TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Batal')),
       FilledButton(
-        onPressed: () => Navigator.of(context).pop({'name': _name.text.trim(), 'location': _location.text.trim(), 'interval': _interval.text.trim().isEmpty ? '60' : _interval.text.trim()}),
+        onPressed: () => Navigator.of(context).pop({
+          'name': _name.text.trim(),
+          'location': _location.text.trim(),
+          'interval': _interval.text.trim().isEmpty ? '60' : _interval.text.trim(),
+        }),
         child: const Text('Simpan'),
       ),
     ],
@@ -533,10 +635,11 @@ class _MachineConfigDialogState extends State<_MachineConfigDialog> {
 }
 
 class _HistoryAll extends StatefulWidget {
-  const _HistoryAll({required this.history, required this.search, required this.loading, this.error});
+  const _HistoryAll({required this.history, required this.search, required this.loading, required this.onRefresh, this.error});
   final List<AdminHistoryRecord> history;
   final TextEditingController search;
   final bool loading;
+  final VoidCallback onRefresh;
   final Object? error;
   @override
   State<_HistoryAll> createState() => _HistoryAllState();
@@ -552,10 +655,16 @@ class _HistoryAllState extends State<_HistoryAll> {
         child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()),
       );
     }
-    if (widget.error != null) return ErrorView(error: widget.error!, onRetry: () => setState(() {}));
+    if (widget.error != null) {
+      return ErrorView(error: widget.error!, onRetry: widget.onRefresh);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(onPressed: widget.onRefresh, icon: const Icon(Icons.refresh), label: const Text('Muat ulang riwayat')),
+        ),
         TextField(
           controller: widget.search,
           onChanged: (_) => setState(() {}),
@@ -568,16 +677,27 @@ class _HistoryAllState extends State<_HistoryAll> {
           label: const Text('Export CSV'),
         ),
         const SizedBox(height: 12),
+        if (filtered.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: Text('Belum ada riwayat setoran yang cocok.')),
+          ),
         for (final item in filtered)
           SectionCard(
             padding: const EdgeInsets.all(12),
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(child: Icon(item.type == 'Organik' ? Icons.compost : Icons.recycling)),
-              title: Text(item.id),
-              subtitle: Text(
-                '${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${Fmt.dateTime(item.time)}',
+              leading: CircleAvatar(
+                child: Icon(
+                  item.type == 'Organik'
+                      ? Icons.compost
+                      : item.type == 'Residu'
+                      ? Icons.delete_outline
+                      : Icons.recycling,
+                ),
               ),
+              title: Text(item.id),
+              subtitle: Text('${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${Fmt.dateTime(item.time)}'),
               isThreeLine: true,
               trailing: Text(item.type),
             ),
@@ -589,9 +709,7 @@ class _HistoryAllState extends State<_HistoryAll> {
   Future<void> _exportCsv(BuildContext context, List<AdminHistoryRecord> rows) async {
     String csvValue(Object value) => '"${value.toString().replaceAll('"', '""')}"';
     const header = 'ID Transaksi,ID Pengguna,Mesin,Jenis,Berat kg,Poin,Waktu';
-    final data = rows
-        .map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, Fmt.dateTime(h.time)].map(csvValue).join(','))
-        .join('\n');
+    final data = rows.map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, Fmt.dateTime(h.time)].map(csvValue).join(',')).join('\n');
     try {
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/smartbin_history_${DateFormat('yyyyMMdd_HHmmss').format(Fmt.nowWib())}.csv');

@@ -529,7 +529,12 @@ export class SmartbinService implements OnModuleInit {
       id: deposit.transactionId,
       userId: deposit.userId ?? "-",
       machine: deposit.machine?.name ?? deposit.machineId,
-      type: deposit.type === "ORGANIK" ? "Organik" : "Anorganik",
+      type:
+        deposit.type === "ORGANIK"
+          ? "Organik"
+          : deposit.type === "RESIDU"
+            ? "Residu"
+            : "Anorganik",
       weightKg: Number((deposit.weightG / 1000).toFixed(3)),
       points: deposit.points,
       time: deposit.deviceTime.toISOString(),
