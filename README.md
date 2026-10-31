@@ -518,7 +518,7 @@ Jika migrasi identitas NIK lama `20261027_public_nik_accounts.sql` belum pernah 
 docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mqtt_v2_alignment.sql
 ```
 
-Pastikan baris mesin `bin-01` dan `bin-02` tersedia di tabel `machines` sesuai `MQTT_DEVICE_MACHINE_MAP`; seed `docs/seed.sql` menyiapkan keduanya untuk setup demo. Setelah backup dan migrasi sukses, build dan recreate **hanya API** agar MySQL, MongoDB, serta volume foto/telemetri tetap berjalan:
+Pastikan baris mesin `bin-01` dan `bin-02` tersedia di tabel `machines` sesuai `MQTT_DEVICE_MACHINE_MAP`; seed `docs/seed.sql` menyiapkan keduanya untuk setup demo. Setelah backup dan migrasi yang diperlukan sukses, build dan recreate **hanya API** agar MySQL, MongoDB, serta volume foto/telemetri tetap berjalan:
 
 ```bash
 mkdir -p logs
@@ -528,6 +528,14 @@ docker compose logs --tail=100 api
 tail -n 100 logs/api.log
 curl --fail https://api-smartbin.ramadhanjp.my.id/api/v1/health
 ```
+
+Pastikan snapshot status terbaru sudah ada di MongoDB `machine_latest` untuk setiap device dan API baru berfungsi sebelum menghapus kolom telemetry lama dari MySQL. Setelah versi API baru aktif, jalankan migrasi pembersihan berikut satu kali; migrasi ini menghapus kolom status/kapasitas/jarak/heartbeat dan indeks terkait dari tabel `machines`, tetapi mempertahankan `id`, `code`, `name`, `location`, serta relasi setoran. Nilai kolom MySQL yang dihapus tidak dapat dipulihkan kecuali dari backup:
+
+```bash
+docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mongodb_machine_telemetry.sql
+```
+
+Setelah migrasi, cek `GET /api/v1/machines` dan log API sekali lagi.
 
 Jika pengecekan gagal, periksa log API dan konfigurasi `.env` sebelum mengambil tindakan pemulihan. Jangan gunakan `docker compose down -v`: perintah itu menghapus volume data persisten.
 
@@ -543,7 +551,7 @@ Unggah foto laptop menggunakan `POST /api/v1/captures`, `X-Machine-Api-Key`, dan
 
 Validasi backend: jalankan `npm run build` dan `npm test` dari folder `backend`. Error API dinormalisasi menjadi `{ "code": "...", "message": "..." }` (error validasi juga menyertakan `details`).
 
-Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk mendukung status mesin, kapasitas/jarak sekat, dan jenis setoran `RESIDU`. Backup database dan tinjau migrasi sebelum menjalankannya; migration ini tidak dimaksudkan untuk dijalankan berulang kali.
+Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk jenis setoran `RESIDU` dan schema MQTT v2. Setelah snapshot status setiap device diverifikasi di MongoDB dan backup database sukses, jalankan [`20261031_mongodb_machine_telemetry.sql`](backend/docs/migrations/20261031_mongodb_machine_telemetry.sql) untuk menghapus kolom telemetry usang dari MySQL `machines`. Jalankan setiap migrasi satu kali dalam urutan ini; jangan mengaktifkan `DB_SYNCHRONIZE` di production.
 
 ### Endpoint yang tersedia
 
@@ -612,14 +620,8 @@ erDiagram
         varchar code UK
         varchar name
         varchar location
-        enum status
-        tinyint organic_fill
-        tinyint inorganic_fill
-        tinyint residu_fill
-        smallint organik_cm
-        smallint anorganik_cm
-        smallint residu_cm
-        datetime last_seen
+        datetime created_at
+        datetime updated_at
     }
     DEPOSITS {
         varchar id PK

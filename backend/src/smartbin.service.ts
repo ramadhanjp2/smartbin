@@ -75,10 +75,6 @@ export class SmartbinService implements OnModuleInit {
           code: "bin-01",
           name: "SmartBIN Unit #01",
           location: "Lokasi pemasangan",
-          status: "OFFLINE",
-          organicFill: 0,
-          inorganicFill: 0,
-          lastSeen: null,
         }),
       );
     }
@@ -560,14 +556,6 @@ export class SmartbinService implements OnModuleInit {
       deviceId: this.deviceIdForMachineCode(machine.code),
       name: machine.name,
       location: machine.location,
-      status: "OFFLINE",
-      lastSeen: null,
-      organicFill: 0,
-      inorganicFill: 0,
-      residuFill: 0,
-      organicCmLeft: 0,
-      inorganicCmLeft: 0,
-      residuCmLeft: 0,
     }));
   }
 

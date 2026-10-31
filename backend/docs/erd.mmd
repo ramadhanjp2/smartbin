@@ -31,14 +31,8 @@ erDiagram
         varchar code UK
         varchar name
         varchar location
-        enum status
-        tinyint organic_fill
-        tinyint inorganic_fill
-        tinyint residu_fill
-        smallint organik_cm
-        smallint anorganik_cm
-        smallint residu_cm
-        datetime last_seen
+        datetime created_at
+        datetime updated_at
     }
     DEPOSITS {
         varchar id PK
