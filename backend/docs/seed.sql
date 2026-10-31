@@ -17,5 +17,16 @@ VALUES (
   NULL,
   UTC_TIMESTAMP(3),
   UTC_TIMESTAMP(3)
+), (
+  UUID(),
+  'bin-02',
+  'SmartBIN Unit #02',
+  'Lokasi Demo SmartBIN',
+  'OFFLINE',
+  0,
+  0,
+  NULL,
+  UTC_TIMESTAMP(3),
+  UTC_TIMESTAMP(3)
 )
 ON DUPLICATE KEY UPDATE code = VALUES(code);

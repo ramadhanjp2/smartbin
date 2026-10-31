@@ -22,6 +22,7 @@ import { RateEntity } from "./entities/rate.entity";
 import { RefreshSessionEntity } from "./entities/refresh-session.entity";
 import { UserEntity, UserRole } from "./entities/user.entity";
 import { calculatePoints } from "./points";
+import { CaptureStorageService } from "./capture-storage.service";
 import {
   DepositQueryDto,
   IngestDepositDto,
@@ -62,10 +63,13 @@ export class SmartbinService implements OnModuleInit {
     private readonly dataSource: DataSource,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly captures: CaptureStorageService,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    const existing = await this.machinesRepo.findOne({ where: { code: "bin-01" } });
+    const existing = await this.machinesRepo.findOne({
+      where: { code: "bin-01" },
+    });
     if (!existing) {
       await this.machinesRepo.save(
         this.machinesRepo.create({
@@ -314,7 +318,7 @@ export class SmartbinService implements OnModuleInit {
       .andWhere("deposit.status = :status", { status: "CREDITED" })
       .andWhere("deposit.deviceTime >= :start", { start })
       .getMany();
-    const byType = (type: "ORGANIK" | "ANORGANIK") =>
+    const byType = (type: "ORGANIK" | "ANORGANIK" | "RESIDU") =>
       monthDeposits.filter((deposit) => deposit.type === type);
     return {
       balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
@@ -339,6 +343,11 @@ export class SmartbinService implements OnModuleInit {
         (sum, deposit) => sum + deposit.points,
         0,
       ),
+      residuG: byType("RESIDU").reduce(
+        (sum, deposit) => sum + deposit.weightG,
+        0,
+      ),
+      residuCount: byType("RESIDU").length,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -370,7 +379,9 @@ export class SmartbinService implements OnModuleInit {
     const hasMore = rows.length > query.limit;
     const data = rows.slice(0, query.limit);
     return {
-      data: data.map((deposit) => this.publicDeposit(deposit)),
+      data: await Promise.all(
+        data.map((deposit) => this.publicDeposit(deposit)),
+      ),
       nextCursor: hasMore
         ? Buffer.from(
             JSON.stringify({
@@ -431,8 +442,14 @@ export class SmartbinService implements OnModuleInit {
   async createAdminUser(dto: CreateAdminUserDto): Promise<unknown> {
     const nikHash = this.nikHash(dto.nik);
     const email = dto.email.trim().toLowerCase();
-    const exists = await this.users.findOne({ where: [{ nikHash }, { email }] });
-    if (exists) throw new ConflictException({ code: "ACCOUNT_EXISTS", message: "NIK atau email sudah digunakan." });
+    const exists = await this.users.findOne({
+      where: [{ nikHash }, { email }],
+    });
+    if (exists)
+      throw new ConflictException({
+        code: "ACCOUNT_EXISTS",
+        message: "NIK atau email sudah digunakan.",
+      });
     const user = this.users.create({
       nikHash,
       email,
@@ -442,30 +459,62 @@ export class SmartbinService implements OnModuleInit {
       active: true,
     });
     await this.users.save(user);
-    return { id: user.id, name: user.name, email: user.email, role: user.role, active: true };
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      active: true,
+    };
   }
 
   async updateAdminUser(id: string, dto: UpdateAdminUserDto): Promise<unknown> {
     const user = await this.users.findOneBy({ id });
-    if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "Pengguna tidak ditemukan." });
+    if (!user)
+      throw new NotFoundException({
+        code: "USER_NOT_FOUND",
+        message: "Pengguna tidak ditemukan.",
+      });
     if (dto.name !== undefined) user.name = dto.name.trim();
     if (dto.email !== undefined) {
       const email = dto.email.trim().toLowerCase();
       const duplicate = await this.users.findOne({ where: { email } });
-      if (duplicate && duplicate.id !== id) throw new ConflictException({ code: "EMAIL_EXISTS", message: "Email sudah digunakan." });
+      if (duplicate && duplicate.id !== id)
+        throw new ConflictException({
+          code: "EMAIL_EXISTS",
+          message: "Email sudah digunakan.",
+        });
       user.email = email;
     }
     if (dto.role !== undefined) user.role = dto.role;
-    if (dto.password !== undefined) user.passwordHash = await bcrypt.hash(dto.password, 12);
+    if (dto.password !== undefined)
+      user.passwordHash = await bcrypt.hash(dto.password, 12);
     if (dto.active !== undefined) user.active = dto.active;
     await this.users.save(user);
-    return { id: user.id, name: user.name, email: user.email, role: user.role, active: user.active !== false };
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      active: user.active !== false,
+    };
   }
 
-  async deleteAdminUser(id: string, currentUserId: string): Promise<{ success: true }> {
-    if (id === currentUserId) throw new BadRequestException({ code: "SELF_DELETE", message: "Tidak dapat menghapus akun yang sedang digunakan." });
+  async deleteAdminUser(
+    id: string,
+    currentUserId: string,
+  ): Promise<{ success: true }> {
+    if (id === currentUserId)
+      throw new BadRequestException({
+        code: "SELF_DELETE",
+        message: "Tidak dapat menghapus akun yang sedang digunakan.",
+      });
     const user = await this.users.findOneBy({ id });
-    if (!user) throw new NotFoundException({ code: "USER_NOT_FOUND", message: "Pengguna tidak ditemukan." });
+    if (!user)
+      throw new NotFoundException({
+        code: "USER_NOT_FOUND",
+        message: "Pengguna tidak ditemukan.",
+      });
     await this.users.remove(user);
     return { success: true };
   }
@@ -505,25 +554,61 @@ export class SmartbinService implements OnModuleInit {
     return rows.map((machine) => ({
       id: machine.id,
       code: machine.code,
+      deviceId: this.deviceIdForMachineCode(machine.code),
       name: machine.name,
       location: machine.location,
       status: machine.status,
       lastSeen: machine.lastSeen?.toISOString() ?? null,
       organicFill: machine.organicFill,
       inorganicFill: machine.inorganicFill,
+      residuFill: machine.residuFill,
+      organicCmLeft: machine.organikCm,
+      inorganicCmLeft: machine.anorganikCm,
+      residuCmLeft: machine.residuCm,
     }));
   }
 
-  async resetMachine(id: string): Promise<unknown> {
-    const machine = await this.machinesRepo.findOneBy({ id });
+  async resolveDeviceId(idOrCode: string): Promise<string> {
+    const machine = await this.machinesRepo.findOne({
+      where: [{ id: idOrCode }, { code: idOrCode }],
+    });
     if (!machine)
       throw new NotFoundException({
         code: "MACHINE_NOT_FOUND",
         message: "Mesin tidak ditemukan.",
       });
-    machine.status = "SIAP";
-    await this.machinesRepo.save(machine);
-    return { id: machine.id, status: machine.status };
+    const deviceId = this.deviceIdForMachineCode(machine.code);
+    if (!deviceId)
+      throw new ConflictException({
+        code: "MACHINE_NOT_CONFIGURED",
+        message: "ID perangkat MQTT belum dikonfigurasi untuk mesin ini.",
+      });
+    return deviceId;
+  }
+
+  async validateCaptureDevice(deviceId: string): Promise<void> {
+    const machineCode = this.machineCodeForDeviceId(deviceId);
+    if (
+      !machineCode ||
+      !(await this.machinesRepo.findOneBy({ code: machineCode }))
+    )
+      throw new NotFoundException({
+        code: "MACHINE_NOT_FOUND",
+        message: "Perangkat MQTT tidak terdaftar.",
+      });
+  }
+
+  async assertCaptureAccess(
+    transactionId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<void> {
+    const deposit = await this.depositsRepo.findOneBy({ transactionId });
+    if (!deposit || (role !== "admin" && deposit.userId !== userId))
+      throw new NotFoundException({
+        code: "CAPTURE_NOT_FOUND",
+        message: "Foto setoran tidak ditemukan.",
+      });
   }
 
   async ingestDeposit(
@@ -538,33 +623,191 @@ export class SmartbinService implements OnModuleInit {
         code: "MACHINE_NOT_FOUND",
         message: "Mesin tidak ditemukan.",
       });
-    const duplicate = await this.depositsRepo.findOneBy({
-      transactionId: dto.transactionId,
-    });
-    if (duplicate)
-      return { transactionId: duplicate.transactionId, duplicate: true };
-
     const uidHash = this.cardHash(dto.uid);
+    return this.createDeposit(
+      machine,
+      dto.transactionId,
+      uidHash,
+      dto.type,
+      dto.itemLabel,
+      dto.weightG,
+      new Date(dto.deviceTime),
+    );
+  }
+
+  async authenticateMqttCard(uidHash: string): Promise<{
+    found: boolean;
+    name: string | null;
+    balance: number;
+  }> {
+    if (!/^[a-f\d]{64}$/i.test(uidHash))
+      throw new BadRequestException("uid_hash harus berupa HMAC-SHA256 hex.");
+    const card = await this.cards.findOneBy({ uidHash: uidHash.toLowerCase() });
+    if (!card) return { found: false, name: null, balance: 0 };
+    const user = await this.users.findOneBy({ id: card.userId });
+    if (!user || !user.active) return { found: false, name: null, balance: 0 };
+    const entries = await this.ledger.find({ where: { userId: user.id } });
+    return {
+      found: true,
+      name: user.name,
+      balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
+    };
+  }
+
+  async ingestMqttDeposit(
+    deviceId: string,
+    body: Record<string, unknown>,
+  ): Promise<{
+    transactionId: string;
+    points: number;
+    balance: number;
+    status: string;
+    duplicate: boolean;
+  }> {
+    const machineCode = this.machineCodeForDeviceId(deviceId);
+    if (!machineCode)
+      throw new NotFoundException(`MQTT device is not mapped: ${deviceId}`);
+    const machine = await this.machinesRepo.findOneBy({ code: machineCode });
+    if (!machine)
+      throw new NotFoundException(`Machine is not provisioned: ${machineCode}`);
+    const transactionId = body.transaction_id;
+    const uidHash = body.uid_hash;
+    const type = body.type;
+    const weightG = body.weight_g;
+    const timestamp = body.timestamp;
+    const validType =
+      type === "ORGANIK" || type === "ANORGANIK" || type === "RESIDU";
+    if (
+      typeof transactionId !== "string" ||
+      !/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(
+        transactionId,
+      ) ||
+      typeof uidHash !== "string" ||
+      !/^[a-f\d]{64}$/i.test(uidHash) ||
+      !validType ||
+      !Number.isInteger(weightG) ||
+      Number(weightG) < 1 ||
+      Number(weightG) > 100_000 ||
+      typeof timestamp !== "string" ||
+      Number.isNaN(Date.parse(timestamp))
+    )
+      throw new BadRequestException("Payload setoran MQTT tidak valid.");
+
+    const result = await this.createDeposit(
+      machine,
+      transactionId,
+      uidHash.toLowerCase(),
+      type,
+      typeof body.item_label === "string" ? body.item_label.slice(0, 120) : "",
+      Number(weightG),
+      new Date(timestamp),
+    );
+    const deposit = await this.depositsRepo.findOneBy({ transactionId });
+    const card = deposit?.userId
+      ? await this.users.findOneBy({ id: deposit.userId })
+      : null;
+    const entries = card
+      ? await this.ledger.find({ where: { userId: card.id } })
+      : [];
+    return {
+      transactionId,
+      points: result.points,
+      balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
+      status: result.status,
+      duplicate: result.duplicate,
+    };
+  }
+
+  async updateMachineFromMqtt(
+    deviceId: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const machineCode = this.machineCodeForDeviceId(deviceId);
+    if (!machineCode)
+      throw new NotFoundException(`MQTT device is not mapped: ${deviceId}`);
+    const machine = await this.machinesRepo.findOneBy({ code: machineCode });
+    if (!machine)
+      throw new NotFoundException(`Machine is not provisioned: ${machineCode}`);
+    const state = body.state;
+    if (
+      state === "IDLE" ||
+      state === "SIBUK" ||
+      state === "SIAP" ||
+      state === "PENUH" ||
+      state === "GANGGUAN" ||
+      state === "OFFLINE"
+    )
+      machine.status = state;
+    const compartments = body.compartments;
+    if (compartments && typeof compartments === "object") {
+      const fills = compartments as Record<string, unknown>;
+      const organicFill = this.fillPercentage(fills.organik_fill_pct);
+      const inorganicFill = this.fillPercentage(fills.anorganik_fill_pct);
+      const residuFill = this.fillPercentage(fills.residu_fill_pct);
+      if (organicFill !== null) machine.organicFill = organicFill;
+      if (inorganicFill !== null) machine.inorganicFill = inorganicFill;
+      if (residuFill !== null) machine.residuFill = residuFill;
+    }
+    const distances = body.sekat_cm;
+    if (distances && typeof distances === "object") {
+      const values = distances as Record<string, unknown>;
+      const organicCm = this.sensorDistance(values.organik);
+      const inorganicCm = this.sensorDistance(values.anorganik);
+      const residuCm = this.sensorDistance(values.residu);
+      if (organicCm !== null) machine.organikCm = organicCm;
+      if (inorganicCm !== null) machine.anorganikCm = inorganicCm;
+      if (residuCm !== null) machine.residuCm = residuCm;
+    }
+    machine.lastSeen = new Date();
+    await this.machinesRepo.save(machine);
+  }
+
+  private async createDeposit(
+    machine: MachineEntity,
+    transactionId: string,
+    uidHash: string,
+    type: "ORGANIK" | "ANORGANIK" | "RESIDU",
+    itemLabel: string,
+    weightG: number,
+    deviceTime: Date,
+  ): Promise<{
+    transactionId: string;
+    points: number;
+    status: string;
+    duplicate: boolean;
+  }> {
+    const duplicate = await this.depositsRepo.findOneBy({ transactionId });
+    if (duplicate)
+      return {
+        transactionId: duplicate.transactionId,
+        points: duplicate.points,
+        status: duplicate.status,
+        duplicate: true,
+      };
     const card = await this.cards.findOneBy({ uidHash });
     const rates = await this.getRates();
     const rate =
-      dto.type === "ORGANIK" ? rates.organikPerKg : rates.anorganikPerKg;
-    const points = calculatePoints(dto.weightG, rate);
+      type === "ORGANIK"
+        ? rates.organikPerKg
+        : type === "ANORGANIK"
+          ? rates.anorganikPerKg
+          : 0;
+    const points = calculatePoints(weightG, rate);
     const status = card ? "CREDITED" : "HELD";
     try {
       const deposit = await this.dataSource.transaction(async (manager) => {
         const saved = await manager.getRepository(DepositEntity).save(
           manager.getRepository(DepositEntity).create({
-            transactionId: dto.transactionId,
-            machineId,
+            transactionId,
+            machineId: machine.id,
             userId: card?.userId ?? null,
             uidHash,
-            type: dto.type,
-            itemLabel: dto.itemLabel,
-            weightG: dto.weightG,
+            type,
+            itemLabel,
+            weightG,
             points,
             ratePerKg: rate,
-            deviceTime: new Date(dto.deviceTime),
+            deviceTime,
             status,
           }),
         );
@@ -574,7 +817,7 @@ export class SmartbinService implements OnModuleInit {
               userId: card.userId,
               delta: points,
               reason: "DEPOSIT",
-              referenceId: dto.transactionId,
+              referenceId: transactionId,
             }),
           );
           await manager.getRepository(NotificationEntity).save(
@@ -582,8 +825,8 @@ export class SmartbinService implements OnModuleInit {
               userId: card.userId,
               kind: "deposit",
               title: "Setoran berhasil tercatat",
-              body: `Setoran ${dto.weightG} g ${dto.type.toLowerCase()} memperoleh ${points} poin.`,
-              referenceId: dto.transactionId,
+              body: `Setoran ${weightG} g ${type.toLowerCase()} memperoleh ${points} poin.`,
+              referenceId: transactionId,
             }),
           );
         }
@@ -599,7 +842,16 @@ export class SmartbinService implements OnModuleInit {
       };
     } catch (error) {
       if (this.isDuplicateKey(error)) {
-        return { transactionId: dto.transactionId, duplicate: true };
+        const duplicateDeposit = await this.depositsRepo.findOneBy({
+          transactionId,
+        });
+        if (duplicateDeposit)
+          return {
+            transactionId,
+            points: duplicateDeposit.points,
+            status: duplicateDeposit.status,
+            duplicate: true,
+          };
       }
       throw error;
     }
@@ -621,6 +873,7 @@ export class SmartbinService implements OnModuleInit {
     if (dto.organicFill !== undefined) machine.organicFill = dto.organicFill;
     if (dto.inorganicFill !== undefined)
       machine.inorganicFill = dto.inorganicFill;
+    if (dto.residuFill !== undefined) machine.residuFill = dto.residuFill;
     machine.lastSeen = new Date();
     await this.machinesRepo.save(machine);
     return {
@@ -727,7 +980,7 @@ export class SmartbinService implements OnModuleInit {
       .digest("hex");
   }
 
-  private publicDeposit(deposit: DepositEntity): unknown {
+  private async publicDeposit(deposit: DepositEntity): Promise<unknown> {
     return {
       transactionId: deposit.transactionId,
       machineId: deposit.machineId,
@@ -740,6 +993,9 @@ export class SmartbinService implements OnModuleInit {
       deviceTime: deposit.deviceTime.toISOString(),
       receivedAt: deposit.receivedAt.toISOString(),
       status: deposit.status,
+      photoUrl: (await this.captures.exists(deposit.transactionId))
+        ? `captures/${encodeURIComponent(deposit.transactionId)}`
+        : null,
     };
   }
 
@@ -765,6 +1021,50 @@ export class SmartbinService implements OnModuleInit {
       .digest("hex");
   }
 
+  private machineCodeForDeviceId(deviceId: string): string | undefined {
+    const mapping = this.config.get(
+      "MQTT_DEVICE_MACHINE_MAP",
+      "esp1=bin-01,esp2=bin-02",
+    );
+    for (const entry of mapping.split(",")) {
+      const [configuredDeviceId, machineCode] = entry
+        .split("=")
+        .map((part: string) => part.trim());
+      if (configuredDeviceId === deviceId && machineCode) return machineCode;
+    }
+    return undefined;
+  }
+
+  private deviceIdForMachineCode(machineCode: string): string | null {
+    const mapping = this.config.get(
+      "MQTT_DEVICE_MACHINE_MAP",
+      "esp1=bin-01,esp2=bin-02",
+    );
+    for (const entry of mapping.split(",")) {
+      const [deviceId, configuredMachineCode] = entry
+        .split("=")
+        .map((part: string) => part.trim());
+      if (configuredMachineCode === machineCode && deviceId) return deviceId;
+    }
+    return null;
+  }
+
+  private fillPercentage(value: unknown): number | null {
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  private sensorDistance(value: unknown): number | null {
+    if (
+      typeof value !== "number" ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > 65_535
+    )
+      return null;
+    return value;
+  }
+
   private hashToken(token: string): string {
     return createHmac(
       "sha256",
@@ -774,7 +1074,7 @@ export class SmartbinService implements OnModuleInit {
       .digest("hex");
   }
 
-  private assertMachineKey(provided: string | undefined): void {
+  assertMachineKey(provided: string | undefined): void {
     const expected = this.config.getOrThrow<string>("MACHINE_API_KEY");
     if (!provided)
       throw new UnauthorizedException({

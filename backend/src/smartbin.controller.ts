@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -13,7 +14,11 @@ import {
   UseGuards,
   Sse,
   MessageEvent,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   AccessTokenGuard,
   AuthenticatedRequest,
@@ -35,6 +40,7 @@ import {
 } from "./dto";
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
+import { CaptureStorageService } from "./capture-storage.service";
 import { map, Observable } from "rxjs";
 
 @Controller()
@@ -42,6 +48,7 @@ export class SmartbinController {
   constructor(
     private readonly service: SmartbinService,
     private readonly telemetry: MachineTelemetryService,
+    private readonly captures: CaptureStorageService,
   ) {}
 
   @Get("health")
@@ -125,6 +132,58 @@ export class SmartbinController {
     @Param("id") id: string,
   ): Promise<unknown> {
     return this.service.deposit(req.user.sub, id);
+  }
+
+  @Post("captures")
+  @UseInterceptors(
+    FileInterceptor("photo", { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async uploadCapture(
+    @Headers("x-machine-api-key") machineKey: string | undefined,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: Record<string, unknown>,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<{ transactionId: string; photoUrl: string }> {
+    this.service.assertMachineKey(machineKey);
+    const transactionId = body.transaction_id;
+    const deviceId = body.bin_id;
+    const wasteType = body.class;
+    const confidence = Number(body.confidence);
+    if (
+      typeof transactionId !== "string" ||
+      idempotencyKey !== transactionId ||
+      typeof deviceId !== "string" ||
+      !["organik", "anorganik", "residu"].includes(String(wasteType)) ||
+      !Number.isFinite(confidence) ||
+      confidence < 0 ||
+      confidence > 1 ||
+      !file
+    )
+      throw new BadRequestException("Metadata unggahan foto tidak valid.");
+    await this.service.validateCaptureDevice(deviceId);
+    await this.captures.save(transactionId, file.mimetype, file.buffer);
+    return {
+      transactionId,
+      photoUrl: `captures/${encodeURIComponent(transactionId)}`,
+    };
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get("captures/:transactionId")
+  async capture(
+    @Req() req: AuthenticatedRequest,
+    @Param("transactionId") transactionId: string,
+  ): Promise<StreamableFile> {
+    await this.service.assertCaptureAccess(
+      transactionId,
+      req.user.sub,
+      req.user.role,
+    );
+    const image = await this.captures.read(transactionId);
+    return new StreamableFile(image.data, {
+      type: image.contentType,
+      disposition: "inline",
+    });
   }
 
   @UseGuards(AccessTokenGuard)
@@ -251,9 +310,18 @@ export class SmartbinController {
   resetMachine(
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
-  ): Promise<unknown> {
+  ): Promise<{ success: true; command: string }> {
     this.service.assertAdmin(req.user.role);
-    return this.service.resetMachine(id);
+    return this.service
+      .resolveDeviceId(id)
+      .then((deviceId) =>
+        this.telemetry.command(
+          deviceId,
+          `reset-${deviceId}-${Date.now()}`,
+          "reset_gangguan",
+        ),
+      )
+      .then(() => ({ success: true, command: "reset_gangguan" }));
   }
 
   @Post("machines/:id/deposits")

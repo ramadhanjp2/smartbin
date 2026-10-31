@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -119,6 +120,8 @@ class ApiSmartbinRepository implements SmartbinRepository {
       inorganicCount: _intValue(json['inorganicCount']),
       organicPoints: _intValue(json['organicPoints']),
       inorganicPoints: _intValue(json['inorganicPoints']),
+      residuG: _intValue(json['residuG'], fallback: 0),
+      residuCount: _intValue(json['residuCount'], fallback: 0),
       updatedAt: _dateValue(json['updatedAt']),
     );
   }
@@ -146,6 +149,27 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<Uint8List?> capturePhoto(String transactionId) async {
+    final uri = _baseUri.resolve('captures/${Uri.encodeComponent(transactionId)}');
+    try {
+      var response = await _send('GET', uri, authenticated: true);
+      if (response.statusCode == 401) {
+        await _refreshAccessToken();
+        response = await _send('GET', uri, authenticated: true);
+      }
+      if (response.statusCode == 404) return null;
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw AppException('Foto setoran gagal dimuat (HTTP ${response.statusCode}).');
+      }
+      return response.bodyBytes;
+    } on http.ClientException {
+      throw const AppException('Tidak dapat memuat foto setoran. Periksa koneksi internet Anda.');
+    } on TimeoutException {
+      throw const AppException('Server terlalu lama merespons saat memuat foto setoran.');
+    }
+  }
+
+  @override
   Future<Rates> rates() async => _ratesFromJson(_asMap(await _request('GET', 'rates')));
 
   @override
@@ -156,6 +180,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
       final status = _enumValue(MachineStatus.values, _stringValue(json['status']).toLowerCase(), (value) => value.name, 'machine status');
       return Machine(
         id: _stringValue(json['id']),
+        deviceId: _stringValue(json['deviceId'], fallback: _stringValue(json['code'], fallback: _stringValue(json['id']))),
         name: _stringValue(json['name']),
         campus: _stringValue(json['campus'], fallback: ''),
         location: _stringValue(json['location'], fallback: ''),
@@ -163,8 +188,10 @@ class ApiSmartbinRepository implements SmartbinRepository {
         lastSeen: json['lastSeen'] == null ? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true) : _dateValue(json['lastSeen']),
         organicFill: _intValue(json['organicFill']),
         inorganicFill: _intValue(json['inorganicFill']),
-        organicCmLeft: 0,
-        inorganicCmLeft: 0,
+        residuFill: _intValue(json['residuFill'], fallback: 0),
+        organicCmLeft: _intValue(json['organicCmLeft'], fallback: 0),
+        inorganicCmLeft: _intValue(json['inorganicCmLeft'], fallback: 0),
+        residuCmLeft: _intValue(json['residuCmLeft'], fallback: 0),
         temperatureC: 0,
         modules: const [],
       );
@@ -173,7 +200,22 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<List<TelemetryLog>> telemetry(String machineId) async {
-    throw const AppException('Data telemetri mesin belum tersedia dari API.');
+    final rows = _asList(await _request(
+      'GET',
+      'machines/${Uri.encodeComponent(machineId)}/telemetry',
+      query: const {'limit': '100'},
+    ));
+    return rows.map((row) {
+      final json = _asMap(row);
+      final payload = _asMap(json['payload'] ?? const <String, Object?>{});
+      final kind = _stringValue(json['kind'], fallback: 'event');
+      return TelemetryLog(
+        title: kind[0].toUpperCase() + kind.substring(1),
+        detail: jsonEncode(payload),
+        time: _dateValue(json['receivedAt']),
+        kind: kind,
+      );
+    }).toList();
   }
 
   @override
@@ -212,7 +254,11 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<void> resetMachine(String machineId) async {
-    await _request('POST', 'machines/${Uri.encodeComponent(machineId)}/reset');
+    await _request(
+      'POST',
+      'machines/${Uri.encodeComponent(machineId)}/command',
+      body: {'command': 'reset_gangguan'},
+    );
   }
 
   @override
@@ -415,6 +461,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
     deviceTime: _dateValue(json['deviceTime']),
     receivedAt: _dateValue(json['receivedAt']),
     status: _enumValue(DepositStatus.values, _stringValue(json['status']).toLowerCase(), (value) => value.name, 'deposit status'),
+    photoUrl: _optionalString(json['photoUrl']),
   );
 
   Rates _ratesFromJson(Map<String, dynamic> json) => Rates(
@@ -442,9 +489,10 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   static String? _optionalString(Object? value) => value == null ? null : _stringValue(value);
 
-  static int _intValue(Object? value) {
+  static int _intValue(Object? value, {int? fallback}) {
     if (value is int) return value;
     if (value is num) return value.toInt();
+    if (fallback != null) return fallback;
     throw const FormatException('Expected an integer.');
   }
 

@@ -2,25 +2,22 @@
 
 ## 1. Tujuan
 
-Dokumentasi ini menjelaskan instalasi, konfigurasi, autentikasi, dan integrasi MQTT untuk dua perangkat SmartBin, yaitu ESP1 dan ESP2, dengan backend aplikasi.
+Dokumentasi ini menjelaskan instalasi, konfigurasi, autentikasi, dan integrasi MQTT untuk perangkat gateway SmartBIN dan backend. `esp1` dan `esp2` adalah contoh ID gateway; petakan setiap ID ke kode mesin MySQL melalui `MQTT_DEVICE_MACHINE_MAP`.
 
 MQTT Broker menggunakan Eclipse Mosquitto dalam Docker. Koneksi perangkat eksternal menggunakan WebSocket Secure (WSS) melalui Cloudflare Tunnel.
 
 ## 2. Arsitektur
 
 ```text
-ESP1 (akun esp1) ───────┐
+ESP1 gateway (akun esp1) ┐
                         │ WSS / TLS 443
-ESP2 (akun esp2) ───────┤
+ESP2 gateway (akun esp2) ├── Cloudflare Tunnel → Mosquitto
                         ▼
-             Cloudflare Tunnel
-                        │
-                        ▼
-               Mosquitto Broker
-                127.0.0.1:9001
-                        │
-                        ▼
-              Backend SmartBin
+              MQTT Broker
+             127.0.0.1:9001
+                        ▲
+                        │ WSS / TLS 443
+              Backend SmartBIN
             (akun smartbin_backend)
 ```
 
@@ -49,7 +46,7 @@ Isi kolom credential berikut secara manual. Simpan password di password manager 
 | ------------- | ------------------------------------ | ------------------------------------ |
 | Device ID     | `esp1`                               | `esp2`                               |
 | Username MQTT | `esp1`                               | `esp2`                               |
-| Password MQTT | P\@ssw0rdesp1                        | P\@ssw0rdesp2                        |
+| Password MQTT | Ambil dari secret manager           | Ambil dari secret manager           |
 | Client ID     | `smartbin-esp1`                      | `smartbin-esp2`                      |
 | PIC perangkat | \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ | \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ |
 | Keterangan    | \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ | \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ |
@@ -59,7 +56,7 @@ Isi kolom credential berikut secara manual. Simpan password di password manager 
 | Credential        | Nilai                                |
 | ----------------- | ------------------------------------ |
 | Username MQTT     | `smartbin_backend`                   |
-| Password MQTT     | P\@ssw0rd                            |
+| Password MQTT     | Ambil dari secret manager            |
 | Client ID backend | `smartbin_backend`                   |
 | Keterangan        | \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ |
 
@@ -283,11 +280,16 @@ Pastikan library MQTT pada firmware ESP mendukung WebSocket Secure. Jika hanya m
 
 | Fungsi          | ESP1                              | ESP2                              |
 | --------------- | --------------------------------- | --------------------------------- |
-| Status          | `smartbin/esp1/telemetry/status`  | `smartbin/esp2/telemetry/status`  |
-| Sensor          | `smartbin/esp1/telemetry/sensor`  | `smartbin/esp2/telemetry/sensor`  |
-| Deposit         | `smartbin/esp1/telemetry/deposit` | `smartbin/esp2/telemetry/deposit` |
-| Command kontrol | `smartbin/esp1/command/control`   | `smartbin/esp2/command/control`   |
-| Command test    | `smartbin/esp1/command/test`      | `smartbin/esp2/command/test`      |
+| Fungsi                    | ESP1 gateway                         | ESP2 gateway                         |
+| ------------------------- | ------------------------------------ | ------------------------------------ |
+| Status/heartbeat          | `smartbin/esp1/telemetry/status`     | `smartbin/esp2/telemetry/status`     |
+| Sensor                    | `smartbin/esp1/telemetry/sensor`     | `smartbin/esp2/telemetry/sensor`     |
+| Validasi kartu            | `smartbin/esp1/telemetry/auth`       | `smartbin/esp2/telemetry/auth`       |
+| Setoran                   | `smartbin/esp1/telemetry/deposit`    | `smartbin/esp2/telemetry/deposit`    |
+| Balasan validasi kartu    | `smartbin/esp1/command/auth`         | `smartbin/esp2/command/auth`         |
+| Balasan setoran/poin      | `smartbin/esp1/command/deposit`      | `smartbin/esp2/command/deposit`      |
+| Command kontrol           | `smartbin/esp1/command/control`      | `smartbin/esp2/command/control`      |
+| Command test              | `smartbin/esp1/command/test`         | `smartbin/esp2/command/test`         |
 
 Backend menggunakan:
 
@@ -298,32 +300,84 @@ Backend menggunakan:
 
 ### 8.1. Telemetry status
 
-Publish ESP1 ke `smartbin/esp1/telemetry/status`:
+Publish gateway ke `smartbin/esp1/telemetry/status` setiap 10 detik dan saat status berubah:
 
 ```json
 {
   "schema_version": 1,
   "device_id": "esp1",
   "timestamp": "2026-10-29T10:00:00Z",
-  "status": "online"
+  "state": "IDLE",
+  "compartments": {
+    "organik_fill_pct": 35,
+    "anorganik_fill_pct": 60,
+    "residu_fill_pct": 12
+  },
+  "sekat_cm": {
+    "organik": 48,
+    "anorganik": 28,
+    "residu": 52
+  },
+  "ai_online": true,
+  "uptime_s": 86400
 }
 ```
 
-ESP2 menggunakan format yang sama dengan `device_id` bernilai `esp2` dan topik `smartbin/esp2/telemetry/status`.
+Nilai `state`: `IDLE`, `SIBUK`, `OFFLINE`, atau `GANGGUAN`; gunakan `PENUH` bila perangkat menerapkan status ringkas itu. Backend mengubah status dan data kompartemen pada MySQL dari payload ini. `device_id` harus sama dengan ID pada topik.
 
-### 8.2. Command dari backend
+`telemetry/status` adalah snapshot kanonis untuk memperbarui status, kapasitas, dan jarak sensor di MySQL. Topic `telemetry/sensor` pada tabel di atas tetap tersedia untuk diagnostik sensor mentah/kompatibilitas; backend menyimpannya sebagai event MongoDB, tetapi tidak menggunakannya sebagai pengganti snapshot status.
+
+### 8.2. Validasi kartu dan setoran
+
+Gateway menghitung `uid_hash` sebagai HMAC-SHA256 atas UID kartu yang sudah di-trim dan di-uppercase, dengan `CARD_HMAC_SECRET` yang sama dengan backend. UID mentah tidak boleh dikirim lewat MQTT. Provisioning secret perangkat harus dilakukan secara privat.
+
+Permintaan validasi kartu ke `smartbin/esp1/telemetry/auth`:
+
+```json
+{
+  "request_id": "0a93b8b2-418f-4dc7-9e03-a5b1e6af2d40",
+  "uid_hash": "<64 karakter HMAC-SHA256 hex>",
+  "timestamp": "2026-10-29T10:00:00Z"
+}
+```
+
+Backend membalas melalui `smartbin/esp1/command/auth` dengan `request_id` yang sama serta `found`, `name`, dan `balance`.
+
+Setoran dipublikasikan ke `smartbin/esp1/telemetry/deposit`:
+
+```json
+{
+  "transaction_id": "8f14e45f-ea2b-4c1a-9c3d-71b0f2a65e40",
+  "uid_hash": "<64 karakter HMAC-SHA256 hex>",
+  "type": "ORGANIK",
+  "item_label": "Botol PET",
+  "weight_g": 128,
+  "confidence": 0.91,
+  "timestamp": "2026-10-29T10:00:00Z"
+}
+```
+
+`type` adalah `ORGANIK`, `ANORGANIK`, atau `RESIDU`. Backend menghitung poin dari berat dan tarif tersimpan, mengabaikan retry dengan `transaction_id` yang sudah diproses, lalu membalas melalui `smartbin/esp1/command/deposit` dengan `transaction_id`, `points`, `balance`, `status`, dan `duplicate`. Setoran `RESIDU` selalu bernilai nol poin.
+
+### 8.3. Command dari backend
 
 Backend dapat publish ke `smartbin/esp1/command/control`:
 
 ```json
 {
   "command_id": "cmd-esp1-001",
-  "command": "ping",
+  "command": "reset_gangguan",
   "timestamp": "2026-10-29T10:00:00Z"
 }
 ```
 
-Untuk ESP2, gunakan topik `smartbin/esp2/command/control` dan `command_id` yang unik.
+Command yang didukung: `reset_gangguan`, `buka_pintu`, `kalibrasi`, `ping`. Gunakan topik device yang tepat dan `command_id` unik. ACK QoS hanya memastikan broker menerima pesan, bukan bahwa aksi fisik selesai; gateway harus menerbitkan status/ACK aplikasi setelah menjalankan command.
+
+### QoS, timeout, dan LWT
+
+Gunakan QoS 1 untuk `auth`, `deposit`, dan command; gateway mencocokkan balasan melalui ID permintaan dan harus idempoten terhadap duplikat. Status heartbeat diterbitkan tiap 10 detik. Setel Last Will pada topic status berisi `state: OFFLINE`; backend juga mencatat timestamp heartbeat terakhir. Batas tunggu `T_AUTH`/`T_DEPOSIT` dijalankan firmware, bukan broker/backend.
+
+Backend terhubung melalui `MQTT_URL=wss://mqtt-smartbin.ramadhanjp.my.id:443/mqtt` (port 443, validasi sertifikat TLS aktif). Jangan menggunakan `mqtt://...:1883` kecuali broker internal dan listener TCP tersebut memang dikonfigurasi.
 
 ## 9. Pengujian menggunakan MQTTX
 
@@ -352,8 +406,8 @@ Buat dua koneksi di MQTTX:
 Uji alur berikut:
 
 1. Backend subscribe ke `smartbin/+/telemetry/#`.
-2. ESP1 publish ke `smartbin/esp1/telemetry/status`.
-3. ESP2 publish ke `smartbin/esp2/telemetry/status`.
+2. ESP1 publish heartbeat ke `smartbin/esp1/telemetry/status`.
+3. ESP2 publish heartbeat ke `smartbin/esp2/telemetry/status`.
 4. Pastikan kedua pesan diterima backend.
 5. Backend publish command ke masing-masing perangkat.
 6. Pastikan perangkat yang dituju menerima command.
@@ -389,9 +443,9 @@ Jangan hanya mengandalkan status koneksi. Verifikasi izin publish dan subscribe 
 - Jangan menyimpan password dalam repository publik.
 - Simpan credential dalam password manager atau secret manager.
 - Gunakan TLS dan validasi sertifikat pada client.
+- Jangan menaruh password credential aktif dalam dokumentasi atau Git; jika credential sebelumnya pernah dipakai, rotasikan.
 - Validasi payload dan command pada firmware maupun backend.
-- Gunakan QoS 0 untuk telemetry rutin yang tidak kritis.
-- Pertimbangkan QoS 1 dan acknowledgement aplikasi untuk command penting.
+- Gunakan QoS 1 untuk transaksi, status, dan command SmartBIN v2. Command aktuator tetap perlu ACK aplikasi karena PUBACK MQTT bukan bukti aksi fisik berhasil.
 - Hindari retained message untuk command aktuator yang berisiko.
 - Buat backup konfigurasi sebelum perubahan ACL atau credential.
 

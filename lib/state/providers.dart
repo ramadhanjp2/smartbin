@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -29,7 +31,7 @@ final repositoryProvider = Provider<SmartbinRepository>((ref) {
   return ApiSmartbinRepository(baseUrl: _apiBaseUrl, client: ref.watch(apiHttpClientProvider), secureStorage: ref.watch(secureStorageProvider));
 });
 
-final nfcReaderProvider = Provider<NfcReader>((ref) => MockNfcReader());
+final nfcReaderProvider = Provider<NfcReader>((ref) => PlatformNfcReader());
 
 // ---------------- Preferensi perangkat ----------------
 
@@ -173,6 +175,7 @@ final pointsSummaryProvider = FutureProvider<PointsSummary>((ref) => ref.watch(r
 final depositsProvider = FutureProvider.family<List<Deposit>, WasteType?>((ref, type) => ref.watch(repositoryProvider).deposits(type: type));
 
 final depositDetailProvider = FutureProvider.family<Deposit, String>((ref, id) => ref.watch(repositoryProvider).deposit(id));
+final capturePhotoProvider = FutureProvider.family<Uint8List?, String>((ref, id) => ref.watch(repositoryProvider).capturePhoto(id));
 
 /// Nilai poin dari API; bila gagal memuat, pakai nilai terakhir yang tersimpan (S12).
 final ratesProvider = FutureProvider<Rates>((ref) async {

@@ -105,6 +105,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     selected: _type == WasteType.anorganik,
                     onTap: () => setState(() => _type = WasteType.anorganik),
                   ),
+                  _TypeChip(
+                    label: 'Residu (${count(WasteType.residu)})',
+                    icon: Icons.delete_outline,
+                    selected: _type == WasteType.residu,
+                    onTap: () => setState(() => _type = WasteType.residu),
+                  ),
                 ],
               ),
             ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -21,23 +22,46 @@ class LinkKtpScreen extends ConsumerStatefulWidget {
   ConsumerState<LinkKtpScreen> createState() => _LinkKtpScreenState();
 }
 
-class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTickerProviderStateMixin {
+class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
   _Phase _phase = _Phase.idle;
   NfcAvailability? _nfc;
+  String? _availabilityError;
   String? _error;
   LinkResult? _result;
 
   @override
   void initState() {
     super.initState();
-    ref.read(nfcReaderProvider).availability().then((a) {
-      if (mounted) setState(() => _nfc = a);
-    });
+    WidgetsBinding.instance.addObserver(this);
+    _checkAvailability();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkAvailability();
+  }
+
+  Future<void> _checkAvailability() async {
+    try {
+      final availability = await ref.read(nfcReaderProvider).availability();
+      if (mounted) {
+        setState(() {
+          _nfc = availability;
+          _availabilityError = null;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _availabilityError = error.toString());
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(ref.read(nfcReaderProvider).cancel());
     _pulse.dispose();
     super.dispose();
   }
@@ -61,7 +85,12 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
       if (!mounted) return;
       setState(() {
         _phase = _Phase.error;
-        _error = e is AppException ? e.message : 'Kartu tidak terbaca. Tempelkan KTP lebih lama di bagian belakang ponsel.';
+        _error = switch (e) {
+          AppException() => e.message,
+          NfcReaderException() => e.message,
+          TimeoutException() => e.message ?? 'Kartu tidak terdeteksi. Tempelkan KTP lebih lama di bagian belakang ponsel.',
+          _ => 'Kartu tidak terbaca. Pastikan NFC aktif dan coba tempelkan kembali e-KTP.',
+        };
       });
     }
   }
@@ -87,7 +116,8 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
     if (_phase == _Phase.success) return _SuccessView(result: _result!, onDone: _finish);
 
     final nfcEnabled = ref.watch(nfcEnabledProvider);
-    final nfcOff = !nfcEnabled || _nfc == NfcAvailability.disabled || _nfc == NfcAvailability.notSupported;
+    final nfcOff =
+        !nfcEnabled || _nfc == null || _availabilityError != null || _nfc == NfcAvailability.disabled || _nfc == NfcAvailability.notSupported;
     final busy = _phase == _Phase.scanning || _phase == _Phase.linking;
 
     return Scaffold(
@@ -114,7 +144,7 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
           ),
           const SizedBox(height: 8),
           Text(
-            'Catatan: pembacaan NFC di aplikasi masih berupa simulasi. Pembaca kartu pada mesin harus mengirim UID yang sama ke backend.',
+            'Aplikasi membaca UID NFC e-KTP, bukan data identitas di dalam chip. Dukungan baca UID dapat berbeda menurut kartu dan model ponsel; UID yang terbaca harus sama dengan UID yang dikenali pembaca mesin.',
             style: context.text.bodySmall?.copyWith(color: p.warning, height: 1.45),
           ),
           const SizedBox(height: 20),
@@ -138,6 +168,8 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
                       ),
                       const SizedBox(width: 8),
                       Text(switch ((_nfc, _phase)) {
+                        (_, _) when _availabilityError != null => 'NFC Tidak Dapat Diperiksa',
+                        (_, _) when _nfc == null => 'Memeriksa NFC…',
                         (_, _) when !nfcEnabled => 'NFC Dinonaktifkan di Profil',
                         (NfcAvailability.notSupported, _) => 'Ponsel tidak mendukung NFC',
                         (NfcAvailability.disabled, _) => 'NFC Mati',
@@ -197,7 +229,7 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
               ],
             ),
           ),
-          if (_phase == _Phase.error && _error != null) ...[
+          if ((_phase == _Phase.error && _error != null) || _availabilityError != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
@@ -207,7 +239,7 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
                   Icon(Icons.error_outline, color: p.error),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(_error!, style: context.text.bodyMedium?.copyWith(color: p.error)),
+                    child: Text(_availabilityError ?? _error!, style: context.text.bodyMedium?.copyWith(color: p.error)),
                   ),
                 ],
               ),
@@ -251,7 +283,7 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
             ),
           ),
           const SizedBox(height: 16),
-          if (nfcOff || _phase == _Phase.error)
+          if (_nfc == NfcAvailability.disabled || _phase == _Phase.error)
             Center(
               child: TextButton.icon(
                 onPressed: () => ref.read(nfcReaderProvider).openSettings(),
@@ -259,9 +291,13 @@ class _LinkKtpScreenState extends ConsumerState<LinkKtpScreen> with SingleTicker
                 label: const Text('NFC Bermasalah? Buka Pengaturan NFC'),
               ),
             ),
+          if (_availabilityError != null)
+            Center(
+              child: TextButton.icon(onPressed: _checkAvailability, icon: const Icon(Icons.refresh, size: 18), label: const Text('Periksa NFC Lagi')),
+            ),
           const SizedBox(height: 8),
           FilledButton.icon(
-            onPressed: busy || _nfc == NfcAvailability.notSupported ? null : _scan,
+            onPressed: busy || nfcOff ? null : _scan,
             icon: busy
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.contactless),

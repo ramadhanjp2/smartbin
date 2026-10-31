@@ -4,7 +4,7 @@ Aplikasi publik untuk membuat akun dengan NIK dan email, melihat saldo poin/riwa
 
 Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, dan ikuti aturannya supaya kode kita tetap seragam dan tidak saling menimpa.
 
-> Status saat ini: Flutter memakai API publik sebagai default (`https://api-smartbin.ramadhanjp.my.id/api/v1`). URL bisa diganti ke backend lokal lewat `--dart-define`; mock tetap tersedia untuk demo. NFC asli, telemetri, dan push FCM masih perlu integrasi tersendiri. Lihat [Status pekerjaan](#status-pekerjaan).
+> Status saat ini: Flutter memakai API publik sebagai default (`https://api-smartbin.ramadhanjp.my.id/api/v1`). URL bisa diganti ke backend lokal lewat `--dart-define`; mock tetap tersedia untuk demo. REST telemetri, status/reset MQTT, dukungan setoran residu, foto lokal persisten, dan pembacaan UID NFC Android tersedia di kode. Firmware ESP32/laptop AI dan push FCM masih perlu integrasi tersendiri. Lihat [Status pekerjaan](#status-pekerjaan).
 
 ---
 
@@ -121,7 +121,7 @@ Pilih API lokal dengan `--dart-define=API_BASE_URL=...`, atau jalankan mode mock
 
 Saat aplikasi berjalan: tekan `r` untuk hot reload, `R` untuk hot restart, dan `q` untuk keluar.
 
-Fitur yang memakai hardware (NFC) hanya disimulasikan, jadi semua alur bisa dicoba di Chrome.
+Pemindaian NFC nyata hanya tersedia di ponsel Android yang mendukung NFC. Pada saat pengembangan desktop/web tidak ada pembacaan kartu; jalankan aplikasi di HP untuk menguji. Aplikasi hanya membaca UID NFC, bukan data identitas e-KTP. Keberhasilan bergantung pada apakah chip e-KTP dan ponsel mengekspos UID; cocokkan hasilnya dengan UID yang dibaca PN532 mesin sebelum dipakai di produksi.
 
 ---
 
@@ -137,7 +137,7 @@ Mode mock memakai data dari [lib/data/mock_smartbin_repository.dart](lib/data/mo
 Skenario yang bisa dicoba:
 
 - **Gagal login:** sandi salah 5 kali akan mengunci login selama 5 menit.
-- **Tautkan KTP:** dari banner Beranda pilih Tautkan Sekarang, lalu Mulai Pindai NFC. Pembacaan di aplikasi masih disimulasikan; mode mock mengkreditkan 120 poin tertahan.
+- **Tautkan KTP:** dari banner Beranda pilih Tautkan Sekarang, lalu Mulai Pindai NFC pada HP Android dengan NFC. Mode API menautkan UID kartu yang terbaca ke backend; mode mock menggunakan data demo dan mengkreditkan 120 poin tertahan.
 - **Registrasi baru:** daftar dengan NIK 16 digit, nama, email umum, dan kata sandi. Setelah daftar, aplikasi membuka layar tautkan KTP.
 - **Admin:** pilih Unit #04 yang berstatus Gangguan untuk mencoba tombol reset.
 
@@ -159,7 +159,7 @@ lib/
 │   ├── models.dart               # model: AppUser, Deposit, Machine, Rates, dll.
 │   ├── smartbin_repository.dart  # INTERFACE (kontrak) ke backend
 │   ├── mock_smartbin_repository.dart  # implementasi mock (data palsu)
-│   └── nfc_reader.dart           # interface + mock pembaca NFC
+│   └── nfc_reader.dart           # pembacaan UID NFC Android + implementasi mock
 ├── state/providers.dart          # semua provider Riverpod (auth, data, preferensi)
 └── features/<fitur>/             # satu folder per fitur, berisi layar & widget khususnya
     ├── auth/  card/  home/  history/  machines/
@@ -439,12 +439,12 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Area | Status | Catatan |
 | --- | --- | --- |
 | Semua layar Rilis 1 (S01–S08, S10–S12) | ✅ Selesai (mock) | Sesuai desain Stitch |
-| Dashboard admin (S16) | ✅ Selesai (mock) | Ubah nilai poin, reset status Gangguan, log telemetri |
+| Dashboard admin (S16) | 🟡 API tersedia | Ubah nilai poin, reset MQTT, log telemetri; bergantung pada backend/broker |
 | Tema terang / gelap / sistem | ✅ Selesai | Tersimpan di perangkat |
 | Login, registrasi, validasi form | ✅ Terhubung API | Mode mock tersedia melalui `SMARTBIN_USE_MOCK=true` |
+| Pemindaian UID NFC e-KTP (Android) | 🟡 Implementasi aktif | Membaca UID NFC-A asli; perlu diuji dengan kartu e-KTP dan pembaca mesin yang digunakan |
 | Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | API publik default; URL lokal dapat dipilih via `API_BASE_URL` |
 | Token di secure storage + refresh token | ✅ Selesai | `flutter_secure_storage`; sesi dipulihkan saat aplikasi dibuka |
-| NFC asli | ⏳ Belum | `flutter_nfc_kit` di `NfcReader` (FR-CARD-01) |
 | Push notification | ⏳ Belum | FCM belum dikonfigurasi pada backend dan aplikasi (`firebase_messaging`) |
 | Cache offline 50 riwayat | ⏳ Belum | `drift` atau `hive` (FR-HIST-04) |
 | Banner offline otomatis | ⏳ Belum | `connectivity_plus` |
@@ -453,6 +453,15 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Detail mesin & petunjuk arah (S09) | 🔜 Rilis 2 | |
 
 Perbarui tabel ini setiap kali menyelesaikan atau mulai mengerjakan sesuatu, supaya semua orang tahu siapa mengerjakan apa.
+
+### Uji pemindaian NFC e-KTP
+
+1. Pastikan HP Android memiliki NFC dan NFC diaktifkan pada Pengaturan.
+2. Masuk ke **Profil → Scan / Tautkan KTP**, aktifkan sakelar NFC di aplikasi, lalu pilih **Mulai Pindai NFC**.
+3. Tempelkan e-KTP ke area NFC pada bagian belakang HP sampai aplikasi mendeteksi kartu.
+4. Pastikan UID yang dipakai firmware mesin sama byte-for-byte dengan UID aplikasi. Keduanya dinormalisasi sebagai rangkaian byte hex huruf besar tanpa pemisah sebelum backend membuat HMAC.
+
+Pemindaian standar ini tidak membaca NIK atau data pribadi dari chip dan bukan autentikasi kriptografis kartu. Tidak semua model e-KTP/ponsel membuka UID yang sama; jika chip tidak mengekspos UID melalui NFC Android, diperlukan metode pembaca/perangkat lain yang disepakati bersama firmware.
 
 ---
 
@@ -475,11 +484,48 @@ Ganti seluruh nilai `replace-with-...` di `backend/.env` dengan secret unik. Jan
 docker compose up --build -d
 ```
 
-API tersedia di `http://localhost:3000/api/v1`; endpoint kesehatan di `/api/v1/health`. Lihat log API dengan `docker compose logs -f api`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, tinjau dan jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) untuk menambahkan NIK hash, indeks MySQL, serta menghapus kolom legacy `nim`/`campus`. Seed nilai poin awal dan satu mesin demo:
+API tersedia di `http://localhost:3000/api/v1`; endpoint kesehatan di `/api/v1/health`. Lihat log API dengan `docker compose logs -f api`. `NIK_HMAC_SECRET` harus tetap sama sepanjang masa akun digunakan, karena pergantian kunci tanpa proses migrasi akan membuat login NIK tidak cocok. Saat `DB_SYNCHRONIZE=true`, TypeORM membuat/memperbarui tabel untuk pengembangan lokal. **Jangan aktifkan `DB_SYNCHRONIZE` di production**; terapkan migrasi yang telah ditinjau. Sebelum deploy backend publik, tinjau dan jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) untuk menambahkan NIK hash, indeks MySQL, serta menghapus kolom legacy `nim`/`campus`. Seed nilai poin awal dan dua mesin demo (`bin-01` dan `bin-02`, sesuai pemetaan gateway contoh):
 
 ```powershell
 Get-Content -Raw docs/seed.sql | docker compose exec -T mysql mysql -usmartbin -psmartbin smartbin
 ```
+
+### Redeploy backend pada server terpisah
+
+Jalankan perintah berikut di server Linux melalui SSH, dari checkout repository pada branch `main`. Jangan menimpa `.env` server dengan `.env.example`; pertahankan secret dan konfigurasi database, broker, serta URL publik yang sudah aktif.
+
+```bash
+cd /path/ke/smartbin/backend
+git status --short
+git fetch origin
+git pull --ff-only origin main
+```
+
+Sebelum migrasi, salin `.env` sebagai cadangan di lokasi aman dan buat backup database. Pastikan `DB_SYNCHRONIZE=false` di `.env` production dan semua secret production tetap sama. Jangan membagikan atau memasukkan `.env`/backup ke Git.
+
+```bash
+env_backup="$HOME/smartbin-backend.env.$(date +%Y%m%d-%H%M%S).backup"
+cp .env "$env_backup"
+chmod 600 "$env_backup"
+docker compose exec -T mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' > "smartbin-db-$(date +%Y%m%d-%H%M%S).sql"
+```
+
+Jika migrasi identitas NIK lama `20261027_public_nik_accounts.sql` belum pernah diterapkan, tinjau lalu jalankan sekali lebih dahulu. Kemudian jalankan migrasi schema MQTT v2 berikut satu kali; migrasi ini menambah status/kolom kapasitas dan jarak sensor serta tipe setoran `RESIDU`:
+
+```bash
+docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mqtt_v2_alignment.sql
+```
+
+Pastikan baris mesin `bin-01` dan `bin-02` tersedia di tabel `machines` sesuai `MQTT_DEVICE_MACHINE_MAP`; seed `docs/seed.sql` menyiapkan keduanya untuk setup demo. Setelah backup dan migrasi sukses, build dan recreate **hanya API** agar MySQL, MongoDB, serta volume foto/telemetri tetap berjalan:
+
+```bash
+docker compose up -d --build api
+docker compose ps
+docker compose logs --tail=100 api
+curl --fail https://api-smartbin.ramadhanjp.my.id/api/v1/health
+```
+
+Jika pengecekan gagal, periksa log API dan konfigurasi `.env` sebelum mengambil tindakan pemulihan. Jangan gunakan `docker compose down -v`: perintah itu menghapus volume data persisten.
 
 Untuk memberi akun admin, daftar lebih dulu lewat API, lalu ubah role akun yang memang berwenang melalui MySQL:
 
@@ -487,9 +533,13 @@ Untuk memberi akun admin, daftar lebih dulu lewat API, lalu ubah role akun yang 
 UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
 ```
 
-Endpoint ingest mesin memakai header `X-Machine-Api-Key` yang cocok dengan `MACHINE_API_KEY`; endpoint tidak boleh dipanggil dari aplikasi mobile. Nilai `uid` hanya diproses untuk HMAC dan tidak disimpan mentah. Integrasi perangkat harus mengirim transaksi setoran unik (`transactionId`) ke API; backend menolak transaksi duplikat dan menghitung poin dari nilai saat ini.
+Gateway dapat mengirim validasi kartu dan setoran melalui topic MQTT pada pola `smartbin/{deviceId}/telemetry/...`; backend menghitung poin dan membalas pada `smartbin/{deviceId}/command/...`. `MQTT_DEVICE_MACHINE_MAP` memetakan gateway ke kode mesin MySQL (contoh `esp1=bin-01,esp2=bin-02`); pastikan kode mesin sudah ada di tabel `machines`. Endpoint REST ingest dengan `X-Machine-Api-Key` tetap tersedia untuk kompatibilitas dan tidak boleh dipanggil dari aplikasi mobile. UID mentah diproses hanya untuk HMAC; MQTT mengirim HMAC-SHA256 hex yang dihitung gateway dengan `CARD_HMAC_SECRET`. `RESIDU` tercatat tanpa poin.
+
+Unggah foto laptop menggunakan `POST /api/v1/captures`, `X-Machine-Api-Key`, dan `Idempotency-Key` yang sama dengan UUID transaksi. Multipart memakai field `transaction_id`, `bin_id`, `class`, `confidence`, dan file `photo`. Backend menyimpan JPEG/PNG/WebP hingga 5 MiB di `CAPTURE_STORAGE_DIR`; Docker Compose memasang named volume `smartbin_captures`. Foto pada riwayat hanya dapat dibaca pemilik setoran atau admin dengan JWT melalui `GET /api/v1/captures/:transactionId`. Penyimpanan ini lokal persisten, bukan CDN; backup dan kebijakan retensi diperlukan sebelum produksi.
 
 Validasi backend: jalankan `npm run build` dan `npm test` dari folder `backend`. Error API dinormalisasi menjadi `{ "code": "...", "message": "..." }` (error validasi juga menyertakan `details`).
+
+Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk mendukung status mesin, kapasitas/jarak sekat, dan jenis setoran `RESIDU`. Backup database dan tinjau migrasi sebelum menjalankannya; migration ini tidak dimaksudkan untuk dijalankan berulang kali.
 
 ### Endpoint yang tersedia
 
@@ -503,9 +553,11 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | GET, PATCH | `/api/v1/me` | Pengguna |
 | POST, DELETE | `/api/v1/cards/link`, `/api/v1/cards/me` | Pengguna |
 | GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
+| GET | `/api/v1/captures/:transactionId` | Pemilik setoran atau admin (JWT) |
 | POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
 | PUT, POST | `/api/v1/admin/rates`, `/api/v1/machines/:id/reset` | Admin |
 | POST | `/api/v1/machines/:id/deposits`, `/api/v1/machines/:id/status` | Mesin (`X-Machine-Api-Key`) |
+| POST | `/api/v1/captures` | Laptop AI (`X-Machine-Api-Key`) |
 | GET | `/api/v1/machines/telemetry`, `/api/v1/machines/:deviceId/telemetry` | Pengguna |
 | GET | `/api/v1/machines/realtime` | Pengguna (SSE) |
 | POST | `/api/v1/machines/:deviceId/command` | Admin |
@@ -556,6 +608,10 @@ erDiagram
         enum status
         tinyint organic_fill
         tinyint inorganic_fill
+        tinyint residu_fill
+        smallint organik_cm
+        smallint anorganik_cm
+        smallint residu_cm
         datetime last_seen
     }
     DEPOSITS {
@@ -608,7 +664,7 @@ erDiagram
 
 ### MQTT, MongoDB, dan realtime mobile
 
-Backend berlangganan `smartbin/+/telemetry/#`, menyimpan event ke koleksi MongoDB `machine_events`, memperbarui `machine_latest`, dan menyiarkan perubahan melalui SSE `GET /api/v1/machines/realtime`. Mobile wajib memakai REST/SSE dengan token JWT dan tidak boleh menyimpan kredensial MQTT. Contoh Flutter:
+Backend terhubung ke broker melalui WSS/TLS 443 (`MQTT_URL=wss://mqtt-smartbin.ramadhanjp.my.id:443/mqtt`), berlangganan `smartbin/+/telemetry/#`, menyimpan event ke koleksi MongoDB `machine_events`, memperbarui `machine_latest` dan ringkasan mesin MySQL, lalu menyiarkan perubahan melalui SSE `GET /api/v1/machines/realtime`. Mobile memakai REST dengan JWT dan tidak menyimpan credential MQTT. API menyediakan riwayat `GET /api/v1/machines/{deviceId}/telemetry`; foto memakai endpoint JWT yang sama di semua layar setoran.
 
 ```dart
 final response = await http.get(
@@ -619,7 +675,7 @@ final response = await http.get(
 // headers Authorization dapat diset pada klien HTTP/SSE yang dipakai proyek.
 ```
 
-Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PASSWORD`, dan `MQTT_SUBSCRIBE_TOPIC` pada `backend/.env`. Untuk mengubah topik atau endpoint MQTT, edit environment tersebut lalu jalankan `docker compose up -d --build api`; topic perintah tetap mengikuti `smartbin/{deviceId}/command/control`. Dokumentasi payload dan validasi ada di [`backend/docs/mqtt-smartbin.md`](backend/docs/mqtt-smartbin.md).
+Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_SUBSCRIBE_TOPIC`, dan `MQTT_DEVICE_MACHINE_MAP` pada `backend/.env`. Gateway memakai `telemetry/auth`, `telemetry/deposit`, `telemetry/status`; balasan dan command memakai topic `command/...` pada pola yang sama. Setelah konfigurasi berubah, jalankan `docker compose up -d --build api`. Detail payload, QoS, ACL dan LWT ada di [`backend/docs/mqtt-smartbin.md`](backend/docs/mqtt-smartbin.md); flow perangkat yang diselaraskan ada di [`backend/docs/Alur SmartBIN v2 — Spesifikasi Lengkap.md`](backend/docs/Alur%20SmartBIN%20v2%20%E2%80%94%20Spesifikasi%20Lengkap.md).
 
 MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, receivedAt)`, `(topic, receivedAt)`, TTL `receivedAt`, snapshot unik `deviceId`, serta command `(deviceId, createdAt)`/unik `commandId`. Data event kedaluwarsa mengikuti `MONGO_TELEMETRY_TTL_SECONDS` (default 90 hari).
 
@@ -627,7 +683,7 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 
 - Broker MQTT eksternal harus tersedia agar ingestion dan command realtime aktif.
 - Pengiriman push FCM dan pendaftaran token perangkat belum diaktifkan; backend hanya menyimpan dan menyajikan notifikasi aplikasi.
-- Endpoint pairing mesin, reward, penghapusan akun, dan detail telemetry belum termasuk implementasi.
+- Firmware ESP32, layanan AI laptop, push FCM, serta ACK aplikasi untuk penyelesaian aksi fisik belum ada di repository ini. Samakan implementasi perangkat dengan topic/payload dokumentasi sebelum mengaktifkan mesin.
 - Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.
 - Lockout login disimpan di memori proses dan kunci mesin saat ini satu nilai bersama; gunakan penyimpanan pembatasan terdistribusi dan kunci per mesin sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
 

@@ -7,6 +7,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { SmartbinController } from "./smartbin.controller";
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
+import { CaptureStorageService } from "./capture-storage.service";
 import { AccessTokenGuard } from "./auth/access-token.guard";
 import { CardEntity } from "./entities/card.entity";
 import { DepositEntity } from "./entities/deposit.entity";
@@ -37,7 +38,9 @@ const entities = [
           typeof config.NIK_HMAC_SECRET !== "string" ||
           config.NIK_HMAC_SECRET.length < 32
         ) {
-          throw new Error("NIK_HMAC_SECRET must contain at least 32 characters.");
+          throw new Error(
+            "NIK_HMAC_SECRET must contain at least 32 characters.",
+          );
         }
         return config;
       },
@@ -78,6 +81,7 @@ const entities = [
   providers: [
     SmartbinService,
     MachineTelemetryService,
+    CaptureStorageService,
     AccessTokenGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

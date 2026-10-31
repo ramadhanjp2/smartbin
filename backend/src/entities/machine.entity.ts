@@ -8,7 +8,8 @@ import {
 } from "typeorm";
 import { DepositEntity } from "./deposit.entity";
 
-export type MachineStatus = "SIAP" | "PENUH" | "GANGGUAN" | "OFFLINE";
+export type MachineStatus =
+  "IDLE" | "SIBUK" | "SIAP" | "PENUH" | "GANGGUAN" | "OFFLINE";
 
 @Entity("machines")
 export class MachineEntity {
@@ -26,7 +27,7 @@ export class MachineEntity {
 
   @Column({
     type: "enum",
-    enum: ["SIAP", "PENUH", "GANGGUAN", "OFFLINE"],
+    enum: ["IDLE", "SIBUK", "SIAP", "PENUH", "GANGGUAN", "OFFLINE"],
     default: "OFFLINE",
   })
   status!: MachineStatus;
@@ -41,6 +42,23 @@ export class MachineEntity {
     default: 0,
   })
   inorganicFill!: number;
+
+  @Column({ name: "residu_fill", type: "tinyint", unsigned: true, default: 0 })
+  residuFill!: number;
+
+  @Column({ name: "organik_cm", type: "smallint", unsigned: true, default: 0 })
+  organikCm!: number;
+
+  @Column({
+    name: "anorganik_cm",
+    type: "smallint",
+    unsigned: true,
+    default: 0,
+  })
+  anorganikCm!: number;
+
+  @Column({ name: "residu_cm", type: "smallint", unsigned: true, default: 0 })
+  residuCm!: number;
 
   @Column({ name: "last_seen", type: "datetime", precision: 3, nullable: true })
   lastSeen!: Date | null;

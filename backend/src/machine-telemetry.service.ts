@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { MongoClient, Collection, Document, ObjectId } from "mongodb";
 import mqtt, { MqttClient } from "mqtt";
 import { Observable, Subject } from "rxjs";
+import { SmartbinService } from "./smartbin.service";
 
 export interface TelemetryMessage {
   data: Document;
@@ -14,7 +15,10 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
   private mqtt?: MqttClient;
   private readonly events = new Subject<TelemetryMessage>();
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly smartbin: SmartbinService,
+  ) {}
 
   get stream(): Observable<TelemetryMessage> {
     return this.events.asObservable();
@@ -48,15 +52,27 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     await Promise.all([
       db.collection("machine_events").createIndex(
         { receivedAt: -1 },
-        { expireAfterSeconds: Number(this.config.get("MONGO_TELEMETRY_TTL_SECONDS", 7776000)) },
+        {
+          expireAfterSeconds: Number(
+            this.config.get("MONGO_TELEMETRY_TTL_SECONDS", 7776000),
+          ),
+        },
       ),
-      db.collection("machine_events").createIndex({ deviceId: 1, receivedAt: -1 }),
+      db
+        .collection("machine_events")
+        .createIndex({ deviceId: 1, receivedAt: -1 }),
       db.collection("machine_events").createIndex({ kind: 1, receivedAt: -1 }),
       db.collection("machine_events").createIndex({ topic: 1, receivedAt: -1 }),
-      db.collection("machine_latest").createIndex({ deviceId: 1 }, { unique: true }),
+      db
+        .collection("machine_latest")
+        .createIndex({ deviceId: 1 }, { unique: true }),
       db.collection("machine_latest").createIndex({ updatedAt: -1 }),
-      db.collection("machine_commands").createIndex({ deviceId: 1, createdAt: -1 }),
-      db.collection("machine_commands").createIndex({ commandId: 1 }, { unique: true }),
+      db
+        .collection("machine_commands")
+        .createIndex({ deviceId: 1, createdAt: -1 }),
+      db
+        .collection("machine_commands")
+        .createIndex({ commandId: 1 }, { unique: true }),
     ]);
   }
 
@@ -65,7 +81,10 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     if (!url) return;
 
     const options: mqtt.IClientOptions = {
-      clientId: this.config.get("MQTT_CLIENT_ID", `smartbin-api-${process.pid}`),
+      clientId: this.config.get(
+        "MQTT_CLIENT_ID",
+        `smartbin-api-${process.pid}`,
+      ),
       username: this.config.get<string>("MQTT_USERNAME") || undefined,
       password: this.config.get<string>("MQTT_PASSWORD") || undefined,
       protocolVersion: 4,
@@ -76,10 +95,23 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
 
     this.mqtt = mqtt.connect(url, options);
     this.mqtt.on("connect", () => {
-      const topic = this.config.get("MQTT_SUBSCRIBE_TOPIC", "smartbin/+/telemetry/#");
-      this.mqtt?.subscribe(topic, { qos: 1 });
+      const topic = this.config.get(
+        "MQTT_SUBSCRIBE_TOPIC",
+        "smartbin/+/telemetry/#",
+      );
+      this.mqtt?.subscribe(topic, { qos: 1 }, (error) => {
+        if (error)
+          console.error("Failed to subscribe to MQTT telemetry", error);
+      });
     });
-    this.mqtt.on("message", (topic, payload) => void this.handleMessage(topic, payload));
+    this.mqtt.on("error", (error) =>
+      console.error("MQTT connection error", error),
+    );
+    this.mqtt.on("message", (topic, payload) => {
+      void this.handleMessage(topic, payload).catch((error: unknown) => {
+        console.error(`Failed to process MQTT message on ${topic}`, error);
+      });
+    });
   }
 
   private async disconnectMqtt(): Promise<void> {
@@ -93,21 +125,63 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     try {
       body = JSON.parse(payload.toString("utf8"));
     } catch {
-      body = { raw: payload.toString("utf8") };
+      console.error(`Ignoring invalid JSON on MQTT topic ${topic}`);
+      return;
     }
 
     const parts = topic.split("/");
-    const deviceId = String(body.device_id ?? parts[1] ?? "unknown");
-    const kind = parts[3] ?? "unknown";
+    if (
+      parts.length !== 4 ||
+      parts[0] !== "smartbin" ||
+      parts[2] !== "telemetry"
+    ) {
+      console.error(`Ignoring unsupported MQTT topic ${topic}`);
+      return;
+    }
+    const deviceId = parts[1];
+    const kind = parts[3];
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(deviceId)) {
+      console.error(`Ignoring invalid MQTT device ID in topic ${topic}`);
+      return;
+    }
+    if (kind === "auth") {
+      const requestId = body.request_id;
+      const uidHash = body.uid_hash;
+      if (typeof requestId !== "string" || typeof uidHash !== "string") {
+        console.error(`Ignoring invalid MQTT auth request from ${deviceId}`);
+        return;
+      }
+      const account = await this.smartbin.authenticateMqttCard(uidHash);
+      await this.publish(`smartbin/${deviceId}/command/auth`, {
+        request_id: requestId,
+        ...account,
+        timestamp: new Date().toISOString(),
+      });
+    } else if (kind === "deposit") {
+      const result = await this.smartbin.ingestMqttDeposit(deviceId, body);
+      await this.publish(`smartbin/${deviceId}/command/deposit`, {
+        transaction_id: result.transactionId,
+        points: result.points,
+        balance: result.balance,
+        status: result.status,
+        duplicate: result.duplicate,
+        timestamp: new Date().toISOString(),
+      });
+    } else if (kind === "status") {
+      await this.smartbin.updateMachineFromMqtt(deviceId, body);
+    }
+
     const deviceTime = this.parseDate(body.timestamp);
     const receivedAt = new Date();
+    const safeBody = { ...body };
+    delete safeBody.uid_hash;
     const document = {
       deviceId,
       kind,
       topic,
       deviceTime,
       receivedAt,
-      payload: body,
+      payload: safeBody,
     };
 
     const db = this.database();
@@ -121,7 +195,9 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
         },
         { upsert: true },
       );
-      this.events.next({ data: { ...document, _id: new ObjectId().toString() } });
+      this.events.next({
+        data: { ...document, _id: new ObjectId().toString() },
+      });
     } catch (error) {
       console.error("Failed to persist MQTT telemetry", error);
     }
@@ -136,23 +212,39 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
   async latest(deviceId?: string, limit = 100): Promise<Document[]> {
     const db = this.database();
     if (deviceId) {
-      const rows = await db.collection("machine_events")
+      const rows = await db
+        .collection("machine_events")
         .find({ deviceId })
         .sort({ receivedAt: -1 })
         .limit(limit)
         .toArray();
       return rows;
     }
-    return db.collection("machine_latest")
+    return db
+      .collection("machine_latest")
       .find({})
       .sort({ updatedAt: -1 })
       .limit(limit)
       .toArray();
   }
 
-  async command(deviceId: string, commandId: string, command: string): Promise<void> {
+  async command(
+    deviceId: string,
+    commandId: string,
+    command: string,
+  ): Promise<void> {
     if (!this.mqtt?.connected) throw new Error("MQTT broker is not connected.");
-    const body = { command_id: commandId, command, timestamp: new Date().toISOString() };
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(deviceId))
+      throw new Error("Invalid MQTT device ID.");
+    if (
+      !["reset_gangguan", "buka_pintu", "kalibrasi", "ping"].includes(command)
+    )
+      throw new Error("Unsupported machine command.");
+    const body = {
+      command_id: commandId,
+      command,
+      timestamp: new Date().toISOString(),
+    };
     await dbCollection(this.database(), "machine_commands").insertOne({
       deviceId,
       commandId,
@@ -161,17 +253,41 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
       delivered: false,
     });
     await new Promise<void>((resolve, reject) => {
-      this.mqtt!.publish(`smartbin/${deviceId}/command/control`, JSON.stringify(body), { qos: 1 }, (error) => {
+      this.mqtt!.publish(
+        `smartbin/${deviceId}/command/control`,
+        JSON.stringify(body),
+        { qos: 1 },
+        (error) => {
+          if (error) return reject(error);
+          void dbCollection(this.database(), "machine_commands")
+            .updateOne(
+              { commandId },
+              { $set: { delivered: true, deliveredAt: new Date() } },
+            )
+            .then(() => resolve())
+            .catch(reject);
+        },
+      );
+    });
+  }
+
+  private async publish(
+    topic: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.mqtt?.connected) throw new Error("MQTT broker is not connected.");
+    await new Promise<void>((resolve, reject) => {
+      this.mqtt!.publish(topic, JSON.stringify(body), { qos: 1 }, (error) => {
         if (error) return reject(error);
-        void dbCollection(this.database(), "machine_commands")
-          .updateOne({ commandId }, { $set: { delivered: true, deliveredAt: new Date() } })
-          .then(() => resolve())
-          .catch(reject);
+        resolve();
       });
     });
   }
 }
 
-function dbCollection(database: ReturnType<MongoClient["db"]>, name: string): Collection<Document> {
+function dbCollection(
+  database: ReturnType<MongoClient["db"]>,
+  name: string,
+): Collection<Document> {
   return database.collection(name);
 }

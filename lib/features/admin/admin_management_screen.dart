@@ -451,7 +451,7 @@ class _MachineManagement extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             leading: IconTile(icon: Icons.delete_sweep_outlined, size: 46),
             title: Text(machine.name),
-            subtitle: Text('${machine.location}\n${machine.status.label} • Organik ${machine.organicFill}% • Anorganik ${machine.inorganicFill}%'),
+            subtitle: Text('${machine.location}\n${machine.status.label} • Organik ${machine.organicFill}% • Anorganik ${machine.inorganicFill}% • Residu ${machine.residuFill}%'),
             isThreeLine: true,
             trailing: IconButton(icon: const Icon(Icons.tune), tooltip: 'Konfigurasi', onPressed: () => _configure(context, ref, machine)),
           ),

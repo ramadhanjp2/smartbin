@@ -100,6 +100,34 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
 
+        if (d.photoUrl != null) ...[
+          ref.watch(capturePhotoProvider(d.transactionId)).when(
+            data: (image) => image == null
+                ? const SizedBox.shrink()
+                : SectionCard(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(
+                        image,
+                        width: double.infinity,
+                        height: 240,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+            error: (error, _) => SectionCard(
+              child: Text('Foto setoran gagal dimuat: ${errorText(error)}'),
+            ),
+            loading: () => const SectionCard(
+              child: SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Rumus poin
         SectionCard(
           child: Column(

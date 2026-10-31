@@ -2,7 +2,8 @@ enum UserRole { user, admin }
 
 enum WasteType {
   organik('Organik'),
-  anorganik('Anorganik');
+  anorganik('Anorganik'),
+  residu('Residu');
 
   const WasteType(this.label);
   final String label;
@@ -12,6 +13,8 @@ enum WasteType {
 enum DepositStatus { held, credited }
 
 enum MachineStatus {
+  idle('Siap'),
+  sibuk('Sedang Digunakan'),
   siap('Siap'),
   penuh('Penuh'),
   gangguan('Gangguan'),
@@ -104,6 +107,7 @@ class Deposit {
     required this.deviceTime,
     required this.receivedAt,
     required this.status,
+    this.photoUrl,
   });
 
   final String transactionId;
@@ -119,6 +123,7 @@ class Deposit {
   final DateTime deviceTime;
   final DateTime receivedAt;
   final DepositStatus status;
+  final String? photoUrl;
 
   bool get isHeld => status == DepositStatus.held;
 
@@ -137,6 +142,7 @@ class Deposit {
     deviceTime: deviceTime,
     receivedAt: receivedAt,
     status: DepositStatus.credited,
+    photoUrl: photoUrl,
   );
 }
 
@@ -153,6 +159,8 @@ class PointsSummary {
     required this.organicPoints,
     required this.inorganicPoints,
     required this.updatedAt,
+    this.residuG = 0,
+    this.residuCount = 0,
   });
 
   final int balance;
@@ -166,8 +174,10 @@ class PointsSummary {
   final int organicPoints;
   final int inorganicPoints;
   final DateTime updatedAt;
+  final int residuG;
+  final int residuCount;
 
-  int get depositCount => organicCount + inorganicCount;
+  int get depositCount => organicCount + inorganicCount + residuCount;
   int get level => 1 + balance ~/ 1000;
 }
 
@@ -177,7 +187,11 @@ class Rates {
   final int anorganikPerKg;
   final DateTime updatedAt;
 
-  int forType(WasteType t) => t == WasteType.organik ? organikPerKg : anorganikPerKg;
+  int forType(WasteType t) => switch (t) {
+    WasteType.organik => organikPerKg,
+    WasteType.anorganik => anorganikPerKg,
+    WasteType.residu => 0,
+  };
 }
 
 class MachineModule {
@@ -190,6 +204,7 @@ class MachineModule {
 class Machine {
   const Machine({
     required this.id,
+    String? deviceId,
     required this.name,
     required this.campus,
     required this.location,
@@ -197,13 +212,16 @@ class Machine {
     required this.lastSeen,
     required this.organicFill,
     required this.inorganicFill,
+    this.residuFill = 0,
     required this.organicCmLeft,
     required this.inorganicCmLeft,
+    this.residuCmLeft = 0,
     required this.temperatureC,
     required this.modules,
-  });
+  }) : deviceId = deviceId ?? id;
 
   final String id;
+  final String deviceId;
   final String name;
   final String campus;
   final String location;
@@ -213,8 +231,10 @@ class Machine {
   /// Persentase isi tong 0–100 (sensor ultrasonik).
   final int organicFill;
   final int inorganicFill;
+  final int residuFill;
   final int organicCmLeft;
   final int inorganicCmLeft;
+  final int residuCmLeft;
   final int temperatureC;
   final List<MachineModule> modules;
 }

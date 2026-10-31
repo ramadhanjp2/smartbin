@@ -10,7 +10,7 @@ import {
 import { MachineEntity } from "./machine.entity";
 import { UserEntity } from "./user.entity";
 
-export type WasteType = "ORGANIK" | "ANORGANIK";
+export type WasteType = "ORGANIK" | "ANORGANIK" | "RESIDU";
 export type DepositStatus = "HELD" | "CREDITED";
 
 @Entity("deposits")
@@ -44,7 +44,7 @@ export class DepositEntity {
   @Column({ name: "uid_hash", length: 64 })
   uidHash!: string;
 
-  @Column({ type: "enum", enum: ["ORGANIK", "ANORGANIK"] })
+  @Column({ type: "enum", enum: ["ORGANIK", "ANORGANIK", "RESIDU"] })
   type!: WasteType;
 
   @Column({ name: "item_label", length: 120, default: "" })

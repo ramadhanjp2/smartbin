@@ -8,6 +8,8 @@ import '../../data/models.dart';
 import '../../state/providers.dart';
 
 PillTone machineTone(MachineStatus s) => switch (s) {
+  MachineStatus.idle => PillTone.success,
+  MachineStatus.sibuk => PillTone.warning,
   MachineStatus.siap => PillTone.success,
   MachineStatus.penuh => PillTone.warning,
   MachineStatus.gangguan => PillTone.error,
@@ -15,6 +17,8 @@ PillTone machineTone(MachineStatus s) => switch (s) {
 };
 
 String machineStatusText(MachineStatus s) => switch (s) {
+  MachineStatus.idle => 'Online & Siap Digunakan',
+  MachineStatus.sibuk => 'Sedang Melayani Pengguna',
   MachineStatus.siap => 'Online & Siap Digunakan',
   MachineStatus.penuh => 'Tong Penuh',
   MachineStatus.gangguan => 'Gangguan',
@@ -156,7 +160,7 @@ class MachineCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: p.cardMuted, borderRadius: BorderRadius.circular(14)),
               child: Text(
-                'Mesin tidak mengirim heartbeat. Setoran tetap disimpan di mesin dan dikirim saat online kembali.',
+                'Mesin sedang offline dan menolak sesi baru. Coba kembali setelah koneksi pulih.',
                 style: context.text.bodySmall?.copyWith(color: p.textMuted),
               ),
             )
@@ -183,6 +187,14 @@ class MachineCard extends StatelessWidget {
               icon: Icons.recycling,
               percent: m.inorganicFill,
               cmLeft: m.inorganicCmLeft,
+            ),
+            const SizedBox(height: 10),
+            _BinRow(
+              title: 'Tong Residu',
+              hint: 'Sampah campuran, logam, atau hasil klasifikasi tidak pasti',
+              icon: Icons.delete_outline,
+              percent: m.residuFill,
+              cmLeft: m.residuCmLeft,
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -254,7 +266,7 @@ class _BinRow extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Sensor ultrasonik: $cmLeft cm sisa',
+              'Jarak sensor ke permukaan: $cmLeft cm',
               style: context.text.labelSmall?.copyWith(color: p.textMuted, fontWeight: FontWeight.w500),
             ),
           ),
@@ -272,9 +284,9 @@ class _QuickGuide extends StatelessWidget {
     final p = context.palette;
     const steps = [
       ('Tempelkan KTP', 'Dekatkan KTP fisik ke modul pembaca kartu mesin sampai bunyi bip.'),
-      ('Masukkan Sampah ke Lubang Terbuka', 'Pilih lubang Organik atau Anorganik sesuai jenis sampah yang Anda bawa.'),
-      ('Penimbangan Otomatis', 'Sensor load cell menimbang bobot sampah secara akurat dalam 3 detik.'),
-      ('Poin Terkumpul Otomatis', 'Poin masuk dan tersinkronisasi ke akun aplikasi SmartBIN Anda.'),
+      ('Masukkan sampah', 'Masukkan satu sampah melalui lubang setelah mesin menyatakan siap.'),
+      ('Pemilahan otomatis', 'Sensor berat, induktif, dan AI menentukan kategori dan tujuan sampah.'),
+      ('Poin dari server', 'Backend menghitung poin dan menyinkronkan setoran ke akun Anda. Residu tidak mendapat poin.'),
     ];
     return SectionCard(
       child: Column(

@@ -87,8 +87,8 @@ export class UnlinkCardDto {
 
 export class DepositQueryDto {
   @IsOptional()
-  @IsEnum(["ORGANIK", "ANORGANIK"])
-  type?: "ORGANIK" | "ANORGANIK";
+  @IsEnum(["ORGANIK", "ANORGANIK", "RESIDU"])
+  type?: "ORGANIK" | "ANORGANIK" | "RESIDU";
 
   @IsOptional()
   @IsISO8601()
@@ -122,8 +122,8 @@ export class IngestDepositDto {
   @MaxLength(64)
   uid!: string;
 
-  @IsEnum(["ORGANIK", "ANORGANIK"])
-  type!: "ORGANIK" | "ANORGANIK";
+  @IsEnum(["ORGANIK", "ANORGANIK", "RESIDU"])
+  type!: "ORGANIK" | "ANORGANIK" | "RESIDU";
 
   @IsOptional()
   @IsString()
@@ -152,8 +152,8 @@ export class UpdateRatesDto {
 }
 
 export class MachineStatusDto {
-  @IsEnum(["SIAP", "PENUH", "GANGGUAN", "OFFLINE"])
-  status!: "SIAP" | "PENUH" | "GANGGUAN" | "OFFLINE";
+  @IsEnum(["IDLE", "SIBUK", "SIAP", "PENUH", "GANGGUAN", "OFFLINE"])
+  status!: "IDLE" | "SIBUK" | "SIAP" | "PENUH" | "GANGGUAN" | "OFFLINE";
 
   @IsOptional()
   @IsInt()
@@ -166,6 +166,12 @@ export class MachineStatusDto {
   @Min(0)
   @Max(100)
   inorganicFill?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  residuFill?: number;
 }
 
 export class CreateAdminUserDto {

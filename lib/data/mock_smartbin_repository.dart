@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'models.dart';
 import 'smartbin_repository.dart';
@@ -386,6 +387,7 @@ class MockSmartbinRepository implements SmartbinRepository {
     final month = _deposits.where((d) => d.deviceTime.year == now.year && d.deviceTime.month == now.month);
     final org = month.where((d) => d.type == WasteType.organik);
     final ano = month.where((d) => d.type == WasteType.anorganik);
+    final residu = month.where((d) => d.type == WasteType.residu);
     final held = _deposits.where((d) => d.isHeld);
     int sumG(Iterable<Deposit> l) => l.fold(0, (s, d) => s + d.weightG);
     int sumP(Iterable<Deposit> l) => l.fold(0, (s, d) => s + d.points);
@@ -400,6 +402,8 @@ class MockSmartbinRepository implements SmartbinRepository {
       inorganicCount: ano.length,
       organicPoints: sumP(org.where((d) => !d.isHeld)),
       inorganicPoints: sumP(ano.where((d) => !d.isHeld)),
+      residuG: sumG(residu),
+      residuCount: residu.length,
       updatedAt: now,
     );
   }
@@ -417,6 +421,9 @@ class MockSmartbinRepository implements SmartbinRepository {
     await _delay();
     return _deposits.firstWhere((d) => d.transactionId == transactionId, orElse: () => throw const AppException('Setoran tidak ditemukan.'));
   }
+
+  @override
+  Future<Uint8List?> capturePhoto(String transactionId) async => null;
 
   @override
   Future<Rates> rates() async {
@@ -500,6 +507,7 @@ class MockSmartbinRepository implements SmartbinRepository {
         m.id == machineId && m.status == MachineStatus.gangguan
             ? Machine(
                 id: m.id,
+                deviceId: m.deviceId,
                 name: m.name,
                 campus: m.campus,
                 location: m.location,
@@ -507,8 +515,10 @@ class MockSmartbinRepository implements SmartbinRepository {
                 lastSeen: DateTime.now(),
                 organicFill: m.organicFill,
                 inorganicFill: m.inorganicFill,
+                residuFill: m.residuFill,
                 organicCmLeft: m.organicCmLeft,
                 inorganicCmLeft: m.inorganicCmLeft,
+                residuCmLeft: m.residuCmLeft,
                 temperatureC: m.temperatureC,
                 modules: m.modules,
               )
@@ -523,7 +533,13 @@ class MockSmartbinRepository implements SmartbinRepository {
   Future<List<AdminUserSummary>> adminUsers() async => const [];
 
   @override
-  Future<void> createAdminUser({required String nik, required String name, required String email, required String password, required String role}) async {}
+  Future<void> createAdminUser({
+    required String nik,
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+  }) async {}
 
   @override
   Future<void> updateAdminUser(String id, {String? name, String? email, String? role, String? password, bool? active}) async {}

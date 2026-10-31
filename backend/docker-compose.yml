@@ -46,6 +46,8 @@ services:
       MQTT_USERNAME: ${MQTT_USERNAME:-}
       MQTT_PASSWORD: ${MQTT_PASSWORD:-}
       MQTT_SUBSCRIBE_TOPIC: ${MQTT_SUBSCRIBE_TOPIC:-smartbin/+/telemetry/#}
+      MQTT_DEVICE_MACHINE_MAP: ${MQTT_DEVICE_MACHINE_MAP:-esp1=bin-01,esp2=bin-02}
+      CAPTURE_STORAGE_DIR: ${CAPTURE_STORAGE_DIR:-/var/lib/smartbin/captures}
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
@@ -53,6 +55,8 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+    volumes:
+      - smartbin_captures:/var/lib/smartbin/captures
   mongodb:
     image: mongo:8
     restart: unless-stopped
@@ -75,3 +79,4 @@ volumes:
   smartbin_mysql_data:
   smartbin_mongodb_data:
   smartbin_mongodb_config:
+  smartbin_captures:

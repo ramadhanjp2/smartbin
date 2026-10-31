@@ -125,6 +125,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                   Icons.circle,
                                   size: 10,
                                   color: switch (m.status) {
+                                    MachineStatus.idle => p.success,
+                                    MachineStatus.sibuk => p.warning,
                                     MachineStatus.siap => p.success,
                                     MachineStatus.penuh => p.warning,
                                     MachineStatus.gangguan => p.error,
@@ -152,7 +154,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     const SizedBox(height: 16),
                     _Controls(machine: selected),
                     const SizedBox(height: 16),
-                    _TelemetryLog(machineId: selected.id),
+                    _TelemetryLog(machineId: selected.deviceId),
                   ],
                 );
               }(),
@@ -314,6 +316,8 @@ class _CapacityRow extends StatelessWidget {
             bin('Organik', machine.organicFill, machine.organicCmLeft),
             const SizedBox(width: 12),
             bin('Anorganik', machine.inorganicFill, machine.inorganicCmLeft),
+            const SizedBox(width: 12),
+            bin('Residu', machine.residuFill, machine.residuCmLeft),
           ],
         ),
       ],
@@ -555,7 +559,7 @@ class _Controls extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(repositoryProvider).resetMachine(machine.id);
+      await ref.read(repositoryProvider).resetMachine(machine.deviceId);
       ref.invalidate(machinesProvider);
       if (context.mounted) showSnack(context, 'Perintah reset dikirim ke ${machine.name}');
     } catch (e) {

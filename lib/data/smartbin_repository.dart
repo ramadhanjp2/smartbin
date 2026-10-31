@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'models.dart';
 
 /// Kontrak lapisan data. Layar tidak pernah memanggil API langsung;
@@ -21,6 +23,7 @@ abstract class SmartbinRepository {
   Future<PointsSummary> pointsSummary();
   Future<List<Deposit>> deposits({WasteType? type});
   Future<Deposit> deposit(String transactionId);
+  Future<Uint8List?> capturePhoto(String transactionId);
   Future<Rates> rates();
 
   // Mesin

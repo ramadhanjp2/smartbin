@@ -14,7 +14,11 @@ IconData depositIcon(Deposit d) {
   if (l.contains('kardus') || l.contains('kertas')) return Icons.inventory_2_outlined;
   if (l.contains('kaleng')) return Icons.local_cafe_outlined;
   if (l.contains('cup')) return Icons.coffee_outlined;
-  return d.type == WasteType.organik ? Icons.compost : Icons.local_drink_outlined;
+  return switch (d.type) {
+    WasteType.organik => Icons.compost,
+    WasteType.anorganik => Icons.local_drink_outlined,
+    WasteType.residu => Icons.delete_outline,
+  };
 }
 
 /// Kartu setoran: dipakai di Beranda (3 terakhir) dan Riwayat.
