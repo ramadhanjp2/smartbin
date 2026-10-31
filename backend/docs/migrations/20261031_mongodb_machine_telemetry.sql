@@ -1,8 +1,7 @@
 -- Machine telemetry is now sourced from MongoDB machine_latest.
 -- Keep only machine identity and descriptive metadata in MySQL.
+-- MySQL removes indexes that reference a dropped column automatically.
 ALTER TABLE machines
-  DROP INDEX idx_machines_status,
-  DROP INDEX idx_machines_last_seen,
   DROP COLUMN status,
   DROP COLUMN organic_fill,
   DROP COLUMN inorganic_fill,

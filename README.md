@@ -529,7 +529,7 @@ tail -n 100 logs/api.log
 curl --fail https://api-smartbin.ramadhanjp.my.id/api/v1/health
 ```
 
-Pastikan snapshot status terbaru sudah ada di MongoDB `machine_latest` untuk setiap device dan API baru berfungsi sebelum menghapus kolom telemetry lama dari MySQL. Setelah versi API baru aktif, jalankan migrasi pembersihan berikut satu kali; migrasi ini menghapus kolom status/kapasitas/jarak/heartbeat dan indeks terkait dari tabel `machines`, tetapi mempertahankan `id`, `code`, `name`, `location`, serta relasi setoran. Nilai kolom MySQL yang dihapus tidak dapat dipulihkan kecuali dari backup:
+Pastikan snapshot status terbaru sudah ada di MongoDB `machine_latest` untuk setiap device dan API baru berfungsi sebelum menghapus kolom telemetry lama dari MySQL. Setelah versi API baru aktif, jalankan migrasi pembersihan berikut satu kali; migrasi ini menghapus kolom status/kapasitas/jarak/heartbeat dari tabel `machines` beserta indeks yang bergantung pada kolom-kolom tersebut, tetapi mempertahankan `id`, `code`, `name`, `location`, serta relasi setoran. MySQL otomatis menyesuaikan indeks saat kolom dihapus. Nilai kolom MySQL yang dihapus tidak dapat dipulihkan kecuali dari backup:
 
 ```bash
 docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mongodb_machine_telemetry.sql
