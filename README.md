@@ -681,6 +681,16 @@ Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PA
 
 Backend API membaca konfigurasi langsung dari `backend/.env` yang dipasang read-only sebagai `/app/.env` di container; Compose juga memakai file lokal tersebut untuk konfigurasi service database. Pertahankan `.env` di host dan jangan masukkan ke Git. Log API ditulis ke `backend/logs/api.log` (bind mount) sekaligus tetap tersedia melalui `docker compose logs`; log Docker memakai rotasi 10 MiB × 5 file. Atur `API_LOG_DIR` pada `.env` jika direktori log host ingin dipindahkan. Terapkan kebijakan rotasi/retensi host pada file bind-mount sesuai kebutuhan disk.
 
+Log request HTTP mencatat JSON event `http.request` saat request mulai dan selesai, dengan `requestId`, metode, route template, fitur/menu, status HTTP, durasi, serta ID akun internal/role bila sudah terautentikasi. ID korelasi dikirim kembali pada header `X-Request-Id`; klien dapat mengirim header yang sama (1–80 karakter alfanumerik, titik, garis bawah, atau strip) untuk menyambungkan log dengan laporan pengguna. Error HTTP memiliki event `http.exception`; alur MQTT mencatat koneksi, subscription, dan keberhasilan/kegagalan pemrosesan per device/topic tanpa mencatat isi payload. Token, kata sandi, NIK, UID kartu, dan body request tidak dicatat.
+
+Contoh penelusuran pada host:
+
+```bash
+grep '"requestId":"ID_DARI_HEADER_X_REQUEST_ID"' logs/api.log
+grep '"feature":"deposits"' logs/api.log | tail -n 50
+grep '"event":"mqtt.telemetry_persist_failed"' logs/api.log | tail -n 20
+```
+
 MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, receivedAt)`, `(topic, receivedAt)`, TTL `receivedAt`, snapshot unik `deviceId`, serta command `(deviceId, createdAt)`/unik `commandId`. Data event kedaluwarsa mengikuti `MONGO_TELEMETRY_TTL_SECONDS` (default 90 hari).
 
 ### Batas MVP backend

@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { MongoClient, Collection, Document } from "mongodb";
 import mqtt, { MqttClient } from "mqtt";
@@ -11,6 +16,7 @@ export interface TelemetryMessage {
 
 @Injectable()
 export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(MachineTelemetryService.name);
   private mongo?: MongoClient;
   private mqtt?: MqttClient;
   private readonly events = new Subject<TelemetryMessage>();
@@ -105,21 +111,39 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
 
     this.mqtt = mqtt.connect(url, options);
     this.mqtt.on("connect", () => {
+      this.logger.log(JSON.stringify({ event: "mqtt.connected" }), "MQTT");
       const topic = this.config.get(
         "MQTT_SUBSCRIBE_TOPIC",
         "smartbin/+/telemetry/#",
       );
       this.mqtt?.subscribe(topic, { qos: 1 }, (error) => {
         if (error)
-          console.error("Failed to subscribe to MQTT telemetry", error);
+          this.logger.error(
+            JSON.stringify({ event: "mqtt.subscribe_failed", topic }),
+            error.stack,
+            "MQTT",
+          );
+        else
+          this.logger.log(
+            JSON.stringify({ event: "mqtt.subscribed", topic }),
+            "MQTT",
+          );
       });
     });
     this.mqtt.on("error", (error) =>
-      console.error("MQTT connection error", error),
+      this.logger.error(
+        JSON.stringify({ event: "mqtt.connection_error" }),
+        error.stack,
+        "MQTT",
+      ),
     );
     this.mqtt.on("message", (topic, payload) => {
       void this.handleMessage(topic, payload).catch((error: unknown) => {
-        console.error(`Failed to process MQTT message on ${topic}`, error);
+        this.logger.error(
+          JSON.stringify({ event: "mqtt.message_failed", topic }),
+          error instanceof Error ? error.stack : String(error),
+          "MQTT",
+        );
       });
     });
   }
@@ -135,7 +159,10 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
     try {
       body = JSON.parse(payload.toString("utf8"));
     } catch {
-      console.error(`Ignoring invalid JSON on MQTT topic ${topic}`);
+      this.logger.warn(
+        JSON.stringify({ event: "mqtt.invalid_json", topic }),
+        "MQTT",
+      );
       return;
     }
 
@@ -145,20 +172,29 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
       parts[0] !== "smartbin" ||
       parts[2] !== "telemetry"
     ) {
-      console.error(`Ignoring unsupported MQTT topic ${topic}`);
+      this.logger.warn(
+        JSON.stringify({ event: "mqtt.unsupported_topic", topic }),
+        "MQTT",
+      );
       return;
     }
     const deviceId = parts[1];
     const kind = parts[3];
     if (!/^[a-zA-Z0-9_-]{1,80}$/.test(deviceId)) {
-      console.error(`Ignoring invalid MQTT device ID in topic ${topic}`);
+      this.logger.warn(
+        JSON.stringify({ event: "mqtt.invalid_device_id", topic }),
+        "MQTT",
+      );
       return;
     }
     if (kind === "auth") {
       const requestId = body.request_id;
       const uidHash = body.uid_hash;
       if (typeof requestId !== "string" || typeof uidHash !== "string") {
-        console.error(`Ignoring invalid MQTT auth request from ${deviceId}`);
+        this.logger.warn(
+          JSON.stringify({ event: "mqtt.invalid_auth_request", deviceId }),
+          "MQTT",
+        );
         return;
       }
       const account = await this.smartbin.authenticateMqttCard(uidHash);
@@ -206,11 +242,29 @@ export class MachineTelemetryService implements OnModuleInit, OnModuleDestroy {
         },
         { upsert: true },
       );
+      this.logger.log(
+        JSON.stringify({
+          event: "mqtt.telemetry_persisted",
+          deviceId,
+          kind,
+          topic,
+        }),
+        "MQTT",
+      );
       this.events.next({
         data: { ...document, _id: event.insertedId },
       });
     } catch (error) {
-      console.error("Failed to persist MQTT telemetry", error);
+      this.logger.error(
+        JSON.stringify({
+          event: "mqtt.telemetry_persist_failed",
+          deviceId,
+          kind,
+          topic,
+        }),
+        error instanceof Error ? error.stack : String(error),
+        "MQTT",
+      );
     }
   }
 

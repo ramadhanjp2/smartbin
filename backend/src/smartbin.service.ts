@@ -933,6 +933,7 @@ export class SmartbinService implements OnModuleInit {
   }
 
   private async issueTokens(user: UserEntity): Promise<unknown> {
+    user.card = await this.cards.findOneBy({ userId: user.id });
     const accessToken = await this.jwt.signAsync({
       sub: user.id,
       role: user.role,

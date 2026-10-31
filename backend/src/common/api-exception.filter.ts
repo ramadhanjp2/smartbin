@@ -7,13 +7,16 @@ import {
   Logger,
 } from "@nestjs/common";
 import { Response } from "express";
+import { TraceableRequest } from "./request-logging.interceptor";
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    const response = host.switchToHttp().getResponse<Response>();
+    const http = host.switchToHttp();
+    const response = http.getResponse<Response>();
+    const request = http.getRequest<TraceableRequest>();
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const payload = exception.getResponse();
@@ -34,6 +37,20 @@ export class ApiExceptionFilter implements ExceptionFilter {
             ? "Terlalu banyak permintaan. Coba lagi sebentar."
             : "Permintaan tidak dapat diproses.";
 
+      this.logger.warn(
+        JSON.stringify({
+          event: "http.exception",
+          requestId: request.requestId ?? "missing",
+          method: request.method,
+          route:
+            typeof request.route?.path === "string"
+              ? `${request.baseUrl}${request.route.path}`
+              : "unmatched",
+          statusCode: status,
+          code,
+        }),
+        "ApiExceptionFilter",
+      );
       response.status(status).json({
         code,
         message,
@@ -43,7 +60,17 @@ export class ApiExceptionFilter implements ExceptionFilter {
     }
 
     this.logger.error(
-      "Unhandled API exception",
+      JSON.stringify({
+        event: "http.exception",
+        requestId: request.requestId ?? "missing",
+        method: request.method,
+        route:
+          typeof request.route?.path === "string"
+            ? `${request.baseUrl}${request.route.path}`
+            : "unmatched",
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        code: "INTERNAL_ERROR",
+      }),
       exception instanceof Error ? exception.stack : String(exception),
     );
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
