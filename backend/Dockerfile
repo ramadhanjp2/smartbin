@@ -11,7 +11,8 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine AS runtime
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    TZ=Asia/Jakarta
 WORKDIR /app
 
 COPY --from=build /app/package*.json ./

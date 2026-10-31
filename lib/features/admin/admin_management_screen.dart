@@ -128,15 +128,14 @@ class _Summary extends ConsumerWidget {
                   final rows = snapshot.data ?? const <AdminHistoryRecord>[];
                   final totals = <int, double>{};
                   for (final row in rows) {
-                    final localTime = row.time.toLocal();
-                    final day = DateTime(localTime.year, localTime.month, localTime.day);
-                    final key = day.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    final day = Fmt.dateOnlyWib(row.time);
+                    final key = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
                     totals[key] = (totals[key] ?? 0) + row.weightKg;
                   }
-                  final now = DateTime.now();
+                  final now = Fmt.dateOnlyWib(DateTime.now());
                   final values = List.generate(7, (index) {
-                    final day = DateTime(now.year, now.month, now.day).subtract(Duration(days: 6 - index));
-                    final key = day.millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+                    final day = now.subtract(Duration(days: 6 - index));
+                    final key = DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
                     return totals[key] ?? 0;
                   });
                   return _MiniChart(values: values, color: p.brand);
@@ -224,7 +223,7 @@ class _MiniChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxValue = values.fold<double>(0, (max, value) => value > max ? value : max);
-    final now = DateTime.now();
+    final now = Fmt.dateOnlyWib(DateTime.now());
     return SizedBox(
       height: 150,
       child: Row(
@@ -577,7 +576,7 @@ class _HistoryAllState extends State<_HistoryAll> {
               leading: CircleAvatar(child: Icon(item.type == 'Organik' ? Icons.compost : Icons.recycling)),
               title: Text(item.id),
               subtitle: Text(
-                '${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${DateFormat('d MMM yyyy HH:mm', 'id_ID').format(item.time.toLocal())}',
+                '${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${Fmt.dateTime(item.time)}',
               ),
               isThreeLine: true,
               trailing: Text(item.type),
@@ -591,11 +590,11 @@ class _HistoryAllState extends State<_HistoryAll> {
     String csvValue(Object value) => '"${value.toString().replaceAll('"', '""')}"';
     const header = 'ID Transaksi,ID Pengguna,Mesin,Jenis,Berat kg,Poin,Waktu';
     final data = rows
-        .map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, h.time.toIso8601String()].map(csvValue).join(','))
+        .map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, Fmt.dateTime(h.time)].map(csvValue).join(','))
         .join('\n');
     try {
       final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/smartbin_history_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv');
+      final file = File('${directory.path}/smartbin_history_${DateFormat('yyyyMMdd_HHmmss').format(Fmt.nowWib())}.csv');
       await file.writeAsString('$header\n$data', flush: true);
       await SharePlus.instance.share(
         ShareParams(

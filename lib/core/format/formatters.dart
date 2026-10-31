@@ -15,6 +15,13 @@ class Fmt {
 
   static DateTime toWib(DateTime t) => t.toUtc().add(const Duration(hours: 7));
 
+  static DateTime nowWib() => toWib(DateTime.now());
+
+  static DateTime dateOnlyWib(DateTime t) {
+    final wib = toWib(t);
+    return DateTime(wib.year, wib.month, wib.day);
+  }
+
   static String time(DateTime t) => '${DateFormat('HH:mm', 'id_ID').format(toWib(t))} WIB';
 
   static String timeWithSeconds(DateTime t) => '${DateFormat('HH:mm:ss', 'id_ID').format(toWib(t))} WIB';

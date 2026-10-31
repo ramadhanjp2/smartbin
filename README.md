@@ -247,6 +247,8 @@ Jangan memformat angka atau tanggal sendiri. Selalu pakai [lib/core/format/forma
 
 Waktu dari API berformat UTC dan `Fmt` yang mengonversinya ke WIB. Waktu setoran yang ditampilkan adalah `deviceTime` (jam RTC mesin), **bukan** `receivedAt`.
 
+Zona waktu tampilan aplikasi dan log API adalah `Asia/Jakarta` (WIB/UTC+7). Timestamp API dan penyimpanan database tetap memakai UTC agar kontrak antarservice dan urutan waktu tetap konsisten; Flutter mengonversi waktu ke WIB saat menampilkan tanggal/jam, termasuk filter tanggal dan ringkasan harian.
+
 ### Penamaan file
 
 - `snake_case.dart`. Layar diakhiri `_screen.dart`, contoh `history_screen.dart`.
@@ -713,4 +715,5 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 | `The argument type 'TextTheme' can't be assigned to 'TextTheme?'` | Memakai `GoogleFonts.xxxTextTheme()` | Pakai `GoogleFonts.plusJakartaSans()` per gaya teks |
 | Font masih default / tidak muncul | Font Google diunduh saat pertama kali jalan | Pastikan HP terhubung internet saat pertama membuka aplikasi |
 | HP tidak muncul di `flutter devices` | USB debugging mati atau izin belum diberikan | Aktifkan Opsi Pengembang → USB debugging, lalu izinkan pop-up di HP |
+| MQTT tersambung tetapi event tidak masuk; log broker menunjukkan subscription `smartbin/+/telemetry/` | Karakter `#` pada `MQTT_SUBSCRIBE_TOPIC` tanpa tanda kutip dianggap komentar oleh parser `.env` | Tulis `MQTT_SUBSCRIBE_TOPIC="smartbin/+/telemetry/#"` di `.env`, lalu recreate API |
 | `Performing an update on the path '_id' would modify the immutable field '_id'` | Snapshot MongoDB menerima `_id` milik event telemetry | Perbarui backend ke versi terbaru; event dan snapshot kini disimpan memakai dokumen update yang terpisah |

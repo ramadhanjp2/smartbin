@@ -24,7 +24,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   int _visible = _pageSize;
 
   Future<void> _pickRange() async {
-    final now = DateTime.now();
+    final now = Fmt.dateOnlyWib(DateTime.now());
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(now.year - 1),
@@ -41,8 +41,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (r == null) return list;
     final end = r.end.add(const Duration(days: 1));
     return list.where((d) {
-      final t = Fmt.toWib(d.deviceTime);
-      final local = DateTime(t.year, t.month, t.day);
+      final local = Fmt.dateOnlyWib(d.deviceTime);
       return !local.isBefore(r.start) && local.isBefore(end);
     }).toList();
   }

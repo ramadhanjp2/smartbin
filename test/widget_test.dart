@@ -18,4 +18,10 @@ void main() {
   test('waktu ditampilkan dalam WIB (UTC+7)', () {
     expect(Fmt.time(DateTime.utc(2026, 10, 24, 3, 15)), '10:15 WIB');
   });
+
+  test('tanggal dihitung berdasarkan WIB meskipun UTC masih hari sebelumnya', () {
+    final nearMidnightUtc = DateTime.utc(2026, 10, 24, 18, 30);
+    expect(Fmt.date(nearMidnightUtc), '25 Okt 2026');
+    expect(Fmt.dateOnlyWib(nearMidnightUtc), DateTime(2026, 10, 25));
+  });
 }
