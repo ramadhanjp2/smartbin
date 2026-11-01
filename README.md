@@ -537,6 +537,7 @@ Pastikan snapshot status terbaru sudah ada di MongoDB `machine_latest` untuk set
 
 ```bash
 docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mongodb_machine_telemetry.sql
+```
 
 Terakhir, jalankan migrasi performa satu kali. Migrasi ini menambah indeks `deposits(uid_hash, status)` untuk pencarian setoran tertahan saat KTP ditautkan, indeks `refresh_sessions(expires_at)`, dan kolom `deposits.has_photo` (NULL = belum diperiksa; diisi otomatis oleh API sehingga daftar riwayat tidak memeriksa filesystem per baris):
 
