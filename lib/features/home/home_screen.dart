@@ -15,7 +15,7 @@ class HomeScreen extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(pointsSummaryProvider);
-    ref.invalidate(depositsProvider(null));
+    ref.invalidate(recentDepositsProvider);
     ref.invalidate(ratesProvider);
     ref.invalidate(notificationsProvider);
     try {
@@ -30,7 +30,7 @@ class HomeScreen extends ConsumerWidget {
     final p = context.palette;
     final user = ref.watch(currentUserProvider);
     final summary = ref.watch(pointsSummaryProvider);
-    final deposits = ref.watch(depositsProvider(null));
+    final deposits = ref.watch(recentDepositsProvider);
     final now = DateTime.now();
 
     return Scaffold(
@@ -114,7 +114,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                 ],
               ),
-              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(depositsProvider(null))),
+              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(recentDepositsProvider)),
               _ => const SkeletonList(count: 3),
             },
             const SizedBox(height: 8),

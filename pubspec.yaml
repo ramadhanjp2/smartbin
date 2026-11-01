@@ -72,6 +72,8 @@ flutter:
 
   assets:
     - assets/images/smartbin-icon.png
+    # Plus Jakarta Sans dibundel agar tampil tanpa internet (dibaca google_fonts dari folder ini).
+    - google_fonts/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

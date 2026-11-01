@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,6 +15,8 @@ import 'state/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Font dibundel di google_fonts/; jangan unduh saat runtime.
+  GoogleFonts.config.allowRuntimeFetching = false;
   await initializeDateFormatting('id_ID');
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(overrides: [sharedPrefsProvider.overrideWithValue(prefs)]);

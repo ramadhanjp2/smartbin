@@ -22,6 +22,9 @@ abstract class SmartbinRepository {
   // Poin & riwayat
   Future<PointsSummary> pointsSummary();
   Future<List<Deposit>> deposits({WasteType? type});
+
+  /// Beberapa setoran terbaru saja (satu request), untuk Beranda.
+  Future<List<Deposit>> recentDeposits({int limit = 3});
   Future<Deposit> deposit(String transactionId);
   Future<Uint8List?> capturePhoto(String transactionId);
   Future<Rates> rates();

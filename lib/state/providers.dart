@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -143,6 +145,7 @@ class AuthController extends Notifier<AuthState> {
   void _invalidateUserData() {
     ref.invalidate(pointsSummaryProvider);
     ref.invalidate(depositsProvider);
+    ref.invalidate(recentDepositsProvider);
     ref.invalidate(notificationsProvider);
   }
 
@@ -174,6 +177,9 @@ final pointsSummaryProvider = FutureProvider<PointsSummary>((ref) => ref.watch(r
 /// `null` = semua jenis.
 final depositsProvider = FutureProvider.family<List<Deposit>, WasteType?>((ref, type) => ref.watch(repositoryProvider).deposits(type: type));
 
+/// Hanya beberapa setoran terakhir (Beranda); tidak memuat seluruh riwayat.
+final recentDepositsProvider = FutureProvider<List<Deposit>>((ref) => ref.watch(repositoryProvider).recentDeposits());
+
 final depositDetailProvider = FutureProvider.family<Deposit, String>((ref, id) => ref.watch(repositoryProvider).deposit(id));
 final capturePhotoProvider = FutureProvider.family<Uint8List?, String>((ref, id) => ref.watch(repositoryProvider).capturePhoto(id));
 
@@ -191,7 +197,20 @@ final ratesProvider = FutureProvider<Rates>((ref) async {
   }
 });
 
-final machinesProvider = FutureProvider<List<Machine>>((ref) => ref.watch(repositoryProvider).machines());
+/// Jeda muat ulang otomatis status mesin; null mematikannya (mock dan test).
+final machinesRefreshIntervalProvider = Provider<Duration?>((ref) => useMockRepository ? null : const Duration(seconds: 30));
+
+/// autoDispose: polling berhenti otomatis saat tidak ada layar yang menampilkan status mesin.
+/// Data lama tetap tampil selama muat ulang berjalan.
+final machinesProvider = FutureProvider.autoDispose<List<Machine>>((ref) async {
+  final machines = await ref.watch(repositoryProvider).machines();
+  final interval = ref.watch(machinesRefreshIntervalProvider);
+  if (interval != null && ref.mounted) {
+    final timer = Timer(interval, ref.invalidateSelf);
+    ref.onDispose(timer.cancel);
+  }
+  return machines;
+});
 final adminUsersProvider = FutureProvider<List<AdminUserSummary>>((ref) => ref.watch(repositoryProvider).adminUsers());
 final adminHistoryProvider = FutureProvider<List<AdminHistoryRecord>>((ref) => ref.watch(repositoryProvider).adminHistory());
 

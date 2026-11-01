@@ -143,6 +143,12 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<List<Deposit>> recentDeposits({int limit = 3}) async {
+    final response = _asMap(await _request('GET', 'deposits', query: {'limit': '$limit'}));
+    return _asList(response['data']).map((row) => _depositFromJson(_asMap(row))).toList();
+  }
+
+  @override
   Future<Deposit> deposit(String transactionId) async {
     final result = await _request('GET', 'deposits/${Uri.encodeComponent(transactionId)}');
     return _depositFromJson(_asMap(result));

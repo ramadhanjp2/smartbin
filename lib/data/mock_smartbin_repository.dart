@@ -417,6 +417,9 @@ class MockSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<List<Deposit>> recentDeposits({int limit = 3}) async => (await deposits()).take(limit).toList();
+
+  @override
   Future<Deposit> deposit(String transactionId) async {
     await _delay();
     return _deposits.firstWhere((d) => d.transactionId == transactionId, orElse: () => throw const AppException('Setoran tidak ditemukan.'));

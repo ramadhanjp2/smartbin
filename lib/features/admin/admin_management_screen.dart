@@ -96,14 +96,11 @@ class _Summary extends ConsumerWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: FutureBuilder<List<AdminUserSummary>>(
-                future: ref.read(repositoryProvider).adminUsers(),
-                builder: (_, snapshot) => _StatTile(
-                  icon: Icons.people,
-                  color: Colors.blue,
-                  label: 'Pengguna Aktif',
-                  value: '${snapshot.data?.where((u) => u.active).length ?? 0}',
-                ),
+              child: _StatTile(
+                icon: Icons.people,
+                color: Colors.blue,
+                label: 'Pengguna Aktif',
+                value: '${ref.watch(adminUsersProvider).value?.where((u) => u.active).length ?? 0}',
               ),
             ),
           ],
@@ -134,10 +131,9 @@ class _Summary extends ConsumerWidget {
             children: [
               SectionHeader(title: 'Berat Sampah per Hari', icon: Icons.show_chart),
               const SizedBox(height: 12),
-              FutureBuilder<List<AdminHistoryRecord>>(
-                future: ref.read(repositoryProvider).adminHistory(),
-                builder: (_, snapshot) {
-                  final rows = snapshot.data ?? const <AdminHistoryRecord>[];
+              Builder(
+                builder: (_) {
+                  final rows = ref.watch(adminHistoryProvider).value ?? const <AdminHistoryRecord>[];
                   final totals = <int, double>{};
                   for (final row in rows) {
                     final day = Fmt.dateOnlyWib(row.time);

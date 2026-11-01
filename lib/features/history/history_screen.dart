@@ -36,6 +36,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (picked != null) setState(() => _range = picked);
   }
 
+  /// Filter jenis dilakukan di klien dari satu daftar lengkap, bukan memuat ulang seluruh halaman per jenis.
+  List<Deposit> _applyType(List<Deposit> list) => _type == null ? list : list.where((d) => d.type == _type).toList();
+
   List<Deposit> _applyRange(List<Deposit> list) {
     final r = _range;
     if (r == null) return list;
@@ -50,7 +53,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final all = ref.watch(depositsProvider(null));
-    final filtered = ref.watch(depositsProvider(_type));
     final now = DateTime.now();
     final allList = all.value ?? const <Deposit>[];
     int count(WasteType? t) => t == null ? allList.length : allList.where((d) => d.type == t).length;
@@ -62,7 +64,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         onRefresh: () async {
           ref.invalidate(depositsProvider);
           try {
-            await ref.read(depositsProvider(_type).future);
+            await ref.read(depositsProvider(null).future);
           } catch (_) {}
         },
         child: ListView(
@@ -138,9 +140,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            switch (filtered) {
-              AsyncValue(:final value?) => _content(context, _applyRange(value), now),
-              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(depositsProvider(_type))),
+            switch (all) {
+              AsyncValue(:final value?) => _content(context, _applyRange(_applyType(value)), now),
+              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(depositsProvider(null))),
               _ => const SkeletonList(count: 5),
             },
           ],

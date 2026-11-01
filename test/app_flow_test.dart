@@ -44,6 +44,7 @@ Future<ProviderContainer> _start(WidgetTester tester, {Size size = const Size(39
       overrides: [
         sharedPrefsProvider.overrideWithValue(prefs),
         repositoryProvider.overrideWithValue(MockSmartbinRepository(latency: const Duration(milliseconds: 50))),
+        machinesRefreshIntervalProvider.overrideWithValue(null),
       ],
       child: const SmartbinApp(fontFamily: 'Roboto'),
     ),
