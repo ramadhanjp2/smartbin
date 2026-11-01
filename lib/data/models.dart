@@ -290,3 +290,54 @@ class AppException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Satu halaman riwayat setoran dari server; [nextCursor] null berarti halaman terakhir.
+class DepositPage {
+  const DepositPage({required this.items, this.nextCursor});
+  final List<Deposit> items;
+  final String? nextCursor;
+}
+
+class DepositTypeStats {
+  const DepositTypeStats({required this.count, required this.weightG, required this.points});
+  static const zero = DepositTypeStats(count: 0, weightG: 0, points: 0);
+  final int count;
+  final int weightG;
+
+  /// Hanya poin dari setoran yang sudah masuk saldo (CREDITED).
+  final int points;
+
+  DepositTypeStats operator +(DepositTypeStats other) =>
+      DepositTypeStats(count: count + other.count, weightG: weightG + other.weightG, points: points + other.points);
+}
+
+/// Ringkasan seluruh riwayat dari server (bukan hanya halaman yang sudah dimuat).
+class DepositStats {
+  const DepositStats({required this.organik, required this.anorganik, required this.residu});
+  static const empty = DepositStats(organik: DepositTypeStats.zero, anorganik: DepositTypeStats.zero, residu: DepositTypeStats.zero);
+  final DepositTypeStats organik;
+  final DepositTypeStats anorganik;
+  final DepositTypeStats residu;
+
+  /// `null` = semua jenis.
+  DepositTypeStats of(WasteType? type) => switch (type) {
+    WasteType.organik => organik,
+    WasteType.anorganik => anorganik,
+    WasteType.residu => residu,
+    null => organik + anorganik + residu,
+  };
+}
+
+class AdminHistoryPage {
+  const AdminHistoryPage({required this.items, this.nextCursor});
+  final List<AdminHistoryRecord> items;
+  final String? nextCursor;
+}
+
+class DailyWeight {
+  const DailyWeight({required this.date, required this.weightKg});
+
+  /// Tanggal kalender WIB (jam 00:00 UTC pada tanggal yang sama).
+  final DateTime date;
+  final double weightKg;
+}

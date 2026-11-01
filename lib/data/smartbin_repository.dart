@@ -25,6 +25,12 @@ abstract class SmartbinRepository {
 
   /// Beberapa setoran terbaru saja (satu request), untuk Beranda.
   Future<List<Deposit>> recentDeposits({int limit = 3});
+
+  /// Satu halaman riwayat (cursor dari server). [from]/[to] adalah batas waktu absolut (inklusif).
+  Future<DepositPage> depositsPage({WasteType? type, DateTime? from, DateTime? to, String? cursor, int limit = 20});
+
+  /// Jumlah, berat, dan poin per jenis untuk seluruh riwayat pada rentang waktu tersebut.
+  Future<DepositStats> depositStats({DateTime? from, DateTime? to});
   Future<Deposit> deposit(String transactionId);
   Future<Uint8List?> capturePhoto(String transactionId);
   Future<Rates> rates();
@@ -32,6 +38,9 @@ abstract class SmartbinRepository {
   // Mesin
   Future<List<Machine>> machines();
   Future<List<TelemetryLog>> telemetry(String machineId);
+
+  /// Memberi sinyal setiap kali status mesin berubah (SSE); koneksi dibuka saat ada pendengar dan ditutup saat dibatalkan.
+  Stream<void> machineStatusEvents();
 
   // Notifikasi
   Future<List<AppNotification>> notifications();
@@ -47,4 +56,6 @@ abstract class SmartbinRepository {
   Future<void> updateAdminUser(String id, {String? name, String? email, String? role, String? password, bool? active});
   Future<void> deleteAdminUser(String id);
   Future<List<AdminHistoryRecord>> adminHistory();
+  Future<AdminHistoryPage> adminHistoryPage({String? cursor, int limit = 50});
+  Future<List<DailyWeight>> adminDailyWeights({int days = 7});
 }

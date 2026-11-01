@@ -1,0 +1,43 @@
+menu "SmartBIN ESP32-B"
+
+config SMARTBIN_WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+
+config SMARTBIN_WIFI_PASSWORD
+    string "Wi-Fi password"
+    default ""
+
+config SMARTBIN_MQTT_USERNAME
+    string "MQTT username"
+    default "esp2"
+
+config SMARTBIN_MQTT_PASSWORD
+    string "MQTT password"
+    default ""
+
+config SMARTBIN_CARD_HMAC_SECRET
+    string "CARD_HMAC_SECRET (same value as backend)"
+    default ""
+
+config SMARTBIN_PN532_SDA_GPIO
+    int "PN532 I2C SDA GPIO"
+    range 0 39
+    default 21
+
+config SMARTBIN_PN532_SCL_GPIO
+    int "PN532 I2C SCL GPIO"
+    range 0 39
+    default 22
+
+config SMARTBIN_PN532_RESET_GPIO
+    int "PN532 reset GPIO (-1 if not connected)"
+    range -1 39
+    default -1
+
+config SMARTBIN_CARD_SLOT_GPIO
+    int "KTP slot microswitch GPIO (active LOW)"
+    range 0 39
+    default 4
+
+endmenu

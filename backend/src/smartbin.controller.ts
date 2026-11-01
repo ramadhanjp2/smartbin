@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Headers,
   Param,
   Patch,
@@ -27,6 +28,7 @@ import {
   AdminHistoryQueryDto,
   CardLinkDto,
   DepositQueryDto,
+  DepositStatsQueryDto,
   IngestDepositDto,
   LoginDto,
   MachineStatusDto,
@@ -127,6 +129,16 @@ export class SmartbinController {
     return this.service.deposits(req.user.sub, query);
   }
 
+  // Harus dideklarasikan sebelum "deposits/:id" agar "stats" tidak dibaca sebagai id.
+  @UseGuards(AccessTokenGuard)
+  @Get("deposits/stats")
+  depositStats(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: DepositStatsQueryDto,
+  ): Promise<unknown> {
+    return this.service.depositStats(req.user.sub, query);
+  }
+
   @UseGuards(AccessTokenGuard)
   @Get("deposits/:id")
   deposit(
@@ -162,6 +174,7 @@ export class SmartbinController {
       !file
     )
       throw new BadRequestException("Metadata unggahan foto tidak valid.");
+    this.service.assertMachineKey(machineKey, deviceId);
     await this.service.validateCaptureDevice(deviceId);
     await this.captures.save(transactionId, file.mimetype, file.buffer);
     await this.service.markCaptureStored(transactionId);
@@ -234,6 +247,20 @@ export class SmartbinController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @Get("admin/stats/daily")
+  adminDailyWeights(
+    @Req() req: AuthenticatedRequest,
+    @Query("days") days?: string,
+  ): Promise<unknown> {
+    this.service.assertAdmin(req.user.role);
+    const parsed = Math.min(
+      Math.max(Math.trunc(Number(days ?? 7)) || 7, 1),
+      31,
+    );
+    return this.service.adminDailyWeights(parsed);
+  }
+
+  @UseGuards(AccessTokenGuard)
   @Put("admin/machines/:id")
   updateMachine(
     @Req() req: AuthenticatedRequest,
@@ -272,6 +299,8 @@ export class SmartbinController {
     return this.machinesWithTelemetry();
   }
 
+  // Mematikan buffering Nginx agar event SSE sampai ke klien tanpa tertahan.
+  @Header("X-Accel-Buffering", "no")
   @UseGuards(AccessTokenGuard)
   @Sse("machines/realtime")
   machineRealtime(): Observable<MessageEvent> {

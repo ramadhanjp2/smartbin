@@ -145,6 +145,8 @@ class AuthController extends Notifier<AuthState> {
   void _invalidateUserData() {
     ref.invalidate(pointsSummaryProvider);
     ref.invalidate(depositsProvider);
+    ref.invalidate(depositHistoryProvider);
+    ref.invalidate(depositStatsProvider);
     ref.invalidate(recentDepositsProvider);
     ref.invalidate(notificationsProvider);
   }
@@ -180,6 +182,60 @@ final depositsProvider = FutureProvider.family<List<Deposit>, WasteType?>((ref, 
 /// Hanya beberapa setoran terakhir (Beranda); tidak memuat seluruh riwayat.
 final recentDepositsProvider = FutureProvider<List<Deposit>>((ref) => ref.watch(repositoryProvider).recentDeposits());
 
+/// Filter riwayat; record punya kesetaraan nilai sehingga dapat menjadi kunci family.
+typedef DepositFilter = ({WasteType? type, DateTime? from, DateTime? to});
+typedef DepositRange = ({DateTime? from, DateTime? to});
+
+class DepositHistoryState {
+  const DepositHistoryState({required this.items, this.nextCursor, this.loadingMore = false, this.loadMoreError});
+  final List<Deposit> items;
+  final String? nextCursor;
+  final bool loadingMore;
+
+  /// Galat saat memuat halaman berikutnya; daftar yang sudah termuat tetap ditampilkan.
+  final Object? loadMoreError;
+
+  bool get hasMore => nextCursor != null;
+}
+
+/// Riwayat setoran berhalaman dari server (cursor). Halaman berikutnya dimuat lewat [loadMore].
+class DepositHistoryController extends AsyncNotifier<DepositHistoryState> {
+  DepositHistoryController(this.filter);
+  final DepositFilter filter;
+  static const pageSize = 20;
+
+  @override
+  Future<DepositHistoryState> build() async {
+    final page = await ref.watch(repositoryProvider).depositsPage(type: filter.type, from: filter.from, to: filter.to, limit: pageSize);
+    return DepositHistoryState(items: page.items, nextCursor: page.nextCursor);
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore || current.loadingMore) return;
+    state = AsyncData(DepositHistoryState(items: current.items, nextCursor: current.nextCursor, loadingMore: true));
+    try {
+      final page = await ref
+          .read(repositoryProvider)
+          .depositsPage(type: filter.type, from: filter.from, to: filter.to, cursor: current.nextCursor, limit: pageSize);
+      if (!ref.mounted) return;
+      state = AsyncData(DepositHistoryState(items: [...current.items, ...page.items], nextCursor: page.nextCursor));
+    } catch (error) {
+      if (!ref.mounted) return;
+      state = AsyncData(DepositHistoryState(items: current.items, nextCursor: current.nextCursor, loadMoreError: error));
+    }
+  }
+}
+
+final depositHistoryProvider = AsyncNotifierProvider.autoDispose.family<DepositHistoryController, DepositHistoryState, DepositFilter>(
+  DepositHistoryController.new,
+);
+
+/// Jumlah, berat, dan poin dari seluruh riwayat (bukan hanya halaman termuat).
+final depositStatsProvider = FutureProvider.autoDispose.family<DepositStats, DepositRange>(
+  (ref, range) => ref.watch(repositoryProvider).depositStats(from: range.from, to: range.to),
+);
+
 final depositDetailProvider = FutureProvider.family<Deposit, String>((ref, id) => ref.watch(repositoryProvider).deposit(id));
 final capturePhotoProvider = FutureProvider.family<Uint8List?, String>((ref, id) => ref.watch(repositoryProvider).capturePhoto(id));
 
@@ -197,12 +253,26 @@ final ratesProvider = FutureProvider<Rates>((ref) async {
   }
 });
 
-/// Jeda muat ulang otomatis status mesin; null mematikannya (mock dan test).
-final machinesRefreshIntervalProvider = Provider<Duration?>((ref) => useMockRepository ? null : const Duration(seconds: 30));
+/// Jeda muat ulang berkala sebagai jaring pengaman bila SSE terputus; null mematikannya (mock dan test).
+final machinesRefreshIntervalProvider = Provider<Duration?>((ref) => useMockRepository ? null : const Duration(seconds: 60));
 
-/// autoDispose: polling berhenti otomatis saat tidak ada layar yang menampilkan status mesin.
+/// Sinyal SSE saat status mesin berubah. Nilainya penghitung agar tiap event dianggap berbeda
+/// (Riverpod membuang pembaruan yang nilainya sama, sehingga event `void` berulang akan hilang).
+final machineEventsProvider = StreamProvider.autoDispose<int>((ref) {
+  var tick = 0;
+  return ref.watch(repositoryProvider).machineStatusEvents().map((_) => ++tick);
+});
+
+/// Diperbarui lewat SSE (+ polling cadangan). autoDispose: koneksi dan timer berhenti saat tidak ada layar yang menampilkannya.
 /// Data lama tetap tampil selama muat ulang berjalan.
 final machinesProvider = FutureProvider.autoDispose<List<Machine>>((ref) async {
+  // Didaftarkan sebelum await pertama agar langganan SSE tidak putus-sambung setiap data dimuat ulang.
+  Timer? debounce;
+  ref.listen(machineEventsProvider, (_, _) {
+    if (debounce?.isActive ?? false) return;
+    debounce = Timer(const Duration(seconds: 1), ref.invalidateSelf);
+  });
+  ref.onDispose(() => debounce?.cancel());
   final machines = await ref.watch(repositoryProvider).machines();
   final interval = ref.watch(machinesRefreshIntervalProvider);
   if (interval != null && ref.mounted) {
@@ -212,7 +282,46 @@ final machinesProvider = FutureProvider.autoDispose<List<Machine>>((ref) async {
   return machines;
 });
 final adminUsersProvider = FutureProvider<List<AdminUserSummary>>((ref) => ref.watch(repositoryProvider).adminUsers());
-final adminHistoryProvider = FutureProvider<List<AdminHistoryRecord>>((ref) => ref.watch(repositoryProvider).adminHistory());
+
+class AdminHistoryState {
+  const AdminHistoryState({required this.items, this.nextCursor, this.loadingMore = false, this.loadMoreError});
+  final List<AdminHistoryRecord> items;
+  final String? nextCursor;
+  final bool loadingMore;
+  final Object? loadMoreError;
+
+  bool get hasMore => nextCursor != null;
+}
+
+/// Riwayat admin berhalaman; pencarian dan ekspor CSV hanya mencakup baris yang sudah dimuat.
+class AdminHistoryController extends AsyncNotifier<AdminHistoryState> {
+  static const pageSize = 50;
+
+  @override
+  Future<AdminHistoryState> build() async {
+    final page = await ref.watch(repositoryProvider).adminHistoryPage(limit: pageSize);
+    return AdminHistoryState(items: page.items, nextCursor: page.nextCursor);
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore || current.loadingMore) return;
+    state = AsyncData(AdminHistoryState(items: current.items, nextCursor: current.nextCursor, loadingMore: true));
+    try {
+      final page = await ref.read(repositoryProvider).adminHistoryPage(cursor: current.nextCursor, limit: pageSize);
+      if (!ref.mounted) return;
+      state = AsyncData(AdminHistoryState(items: [...current.items, ...page.items], nextCursor: page.nextCursor));
+    } catch (error) {
+      if (!ref.mounted) return;
+      state = AsyncData(AdminHistoryState(items: current.items, nextCursor: current.nextCursor, loadMoreError: error));
+    }
+  }
+}
+
+final adminHistoryProvider = AsyncNotifierProvider.autoDispose<AdminHistoryController, AdminHistoryState>(AdminHistoryController.new);
+
+/// Berat per hari (7 hari terakhir, WIB) untuk grafik admin, dihitung di server.
+final adminDailyWeightsProvider = FutureProvider.autoDispose<List<DailyWeight>>((ref) => ref.watch(repositoryProvider).adminDailyWeights());
 
 final telemetryProvider = FutureProvider.family<List<TelemetryLog>, String>((ref, id) => ref.watch(repositoryProvider).telemetry(id));
 

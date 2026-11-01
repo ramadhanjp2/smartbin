@@ -149,6 +149,38 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<DepositPage> depositsPage({WasteType? type, DateTime? from, DateTime? to, String? cursor, int limit = 20}) async {
+    final query = <String, String>{'limit': '$limit'};
+    if (type != null) query['type'] = type.name.toUpperCase();
+    if (from != null) query['from'] = from.toUtc().toIso8601String();
+    if (to != null) query['to'] = to.toUtc().toIso8601String();
+    if (cursor != null) query['cursor'] = cursor;
+    final response = _asMap(await _request('GET', 'deposits', query: query));
+    return DepositPage(
+      items: _asList(response['data']).map((row) => _depositFromJson(_asMap(row))).toList(),
+      nextCursor: _optionalString(response['nextCursor']),
+    );
+  }
+
+  @override
+  Future<DepositStats> depositStats({DateTime? from, DateTime? to}) async {
+    final query = <String, String>{};
+    if (from != null) query['from'] = from.toUtc().toIso8601String();
+    if (to != null) query['to'] = to.toUtc().toIso8601String();
+    final json = _asMap(await _request('GET', 'deposits/stats', query: query.isEmpty ? null : query));
+    DepositTypeStats part(String key) {
+      final row = _asMap(json[key] ?? const <String, Object?>{});
+      return DepositTypeStats(
+        count: _intValue(row['count'], fallback: 0),
+        weightG: _intValue(row['weightG'], fallback: 0),
+        points: _intValue(row['points'], fallback: 0),
+      );
+    }
+
+    return DepositStats(organik: part('organik'), anorganik: part('anorganik'), residu: part('residu'));
+  }
+
+  @override
   Future<Deposit> deposit(String transactionId) async {
     final result = await _request('GET', 'deposits/${Uri.encodeComponent(transactionId)}');
     return _depositFromJson(_asMap(result));
@@ -206,11 +238,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<List<TelemetryLog>> telemetry(String machineId) async {
-    final rows = _asList(await _request(
-      'GET',
-      'machines/${Uri.encodeComponent(machineId)}/telemetry',
-      query: const {'limit': '100'},
-    ));
+    final rows = _asList(await _request('GET', 'machines/${Uri.encodeComponent(machineId)}/telemetry', query: const {'limit': '100'}));
     return rows.map((row) {
       final json = _asMap(row);
       final payload = _asMap(json['payload'] ?? const <String, Object?>{});
@@ -222,6 +250,51 @@ class ApiSmartbinRepository implements SmartbinRepository {
         kind: kind,
       );
     }).toList();
+  }
+
+  @override
+  Stream<void> machineStatusEvents() {
+    late final StreamController<void> controller;
+    StreamSubscription<String>? subscription;
+    var closed = false;
+
+    Future<void> connect() async {
+      var delay = const Duration(seconds: 2);
+      while (!closed) {
+        try {
+          final accessToken = await secureStorage.read(key: _accessTokenKey);
+          if (accessToken == null || accessToken.isEmpty) return;
+          final request = http.Request('GET', _baseUri.resolve('machines/realtime'))
+            ..headers.addAll({'Accept': 'text/event-stream', 'Authorization': 'Bearer $accessToken'});
+          final response = await client.send(request).timeout(_timeout);
+          if (closed) return;
+          if (response.statusCode == 401) {
+            await _refreshAccessToken();
+            continue;
+          }
+          if (response.statusCode != 200) throw http.ClientException('SSE HTTP ${response.statusCode}');
+          delay = const Duration(seconds: 2);
+          subscription = sseData(response.stream).listen((data) {
+            if (isMachineStatusEvent(data) && !controller.isClosed) controller.add(null);
+          });
+          await subscription!.asFuture<void>();
+        } on Object {
+          // Koneksi putus atau gagal: coba lagi dengan jeda yang makin panjang.
+        }
+        if (closed) return;
+        await Future<void>.delayed(delay);
+        delay = delay * 2 > const Duration(seconds: 60) ? const Duration(seconds: 60) : delay * 2;
+      }
+    }
+
+    controller = StreamController<void>(
+      onListen: () => unawaited(connect()),
+      onCancel: () async {
+        closed = true;
+        await subscription?.cancel();
+      },
+    );
+    return controller.stream;
   }
 
   @override
@@ -260,11 +333,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<void> resetMachine(String machineId) async {
-    await _request(
-      'POST',
-      'machines/${Uri.encodeComponent(machineId)}/command',
-      body: {'command': 'reset_gangguan'},
-    );
+    await _request('POST', 'machines/${Uri.encodeComponent(machineId)}/command', body: {'command': 'reset_gangguan'});
   }
 
   @override
@@ -288,7 +357,13 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
-  Future<void> createAdminUser({required String nik, required String name, required String email, required String password, required String role}) async {
+  Future<void> createAdminUser({
+    required String nik,
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+  }) async {
     await _request('POST', 'admin/users', body: {'nik': nik, 'name': name, 'email': email, 'password': password, 'role': role});
   }
 
@@ -311,20 +386,40 @@ class ApiSmartbinRepository implements SmartbinRepository {
   @override
   Future<List<AdminHistoryRecord>> adminHistory() async {
     final rows = _asList(await _request('GET', 'admin/history'));
+    return rows.map((row) => _adminRecordFromJson(_asMap(row))).toList();
+  }
+
+  @override
+  Future<AdminHistoryPage> adminHistoryPage({String? cursor, int limit = 50}) async {
+    final query = <String, String>{'paged': 'true', 'limit': '$limit'};
+    if (cursor != null) query['cursor'] = cursor;
+    final response = _asMap(await _request('GET', 'admin/history', query: query));
+    return AdminHistoryPage(
+      items: _asList(response['data']).map((row) => _adminRecordFromJson(_asMap(row))).toList(),
+      nextCursor: _optionalString(response['nextCursor']),
+    );
+  }
+
+  @override
+  Future<List<DailyWeight>> adminDailyWeights({int days = 7}) async {
+    final rows = _asList(await _request('GET', 'admin/stats/daily', query: {'days': '$days'}));
     return rows.map((row) {
       final json = _asMap(row);
-      return AdminHistoryRecord(
-        id: _stringValue(json['id']),
-        userId: _stringValue(json['userId'], fallback: '-'),
-        userName: _stringValue(json['userName'], fallback: 'Pengguna tidak diketahui'),
-        machine: _stringValue(json['machine'], fallback: '-'),
-        type: _stringValue(json['type'], fallback: '-'),
-        weightKg: _doubleValue(json['weightKg']),
-        points: _intValue(json['points']),
-        time: _dateValue(json['time']),
-      );
+      final parts = _stringValue(json['date']).split('-').map(int.parse).toList();
+      return DailyWeight(date: DateTime.utc(parts[0], parts[1], parts[2]), weightKg: _doubleValue(json['weightKg']));
     }).toList();
   }
+
+  AdminHistoryRecord _adminRecordFromJson(Map<String, dynamic> json) => AdminHistoryRecord(
+    id: _stringValue(json['id']),
+    userId: _stringValue(json['userId'], fallback: '-'),
+    userName: _stringValue(json['userName'], fallback: 'Pengguna tidak diketahui'),
+    machine: _stringValue(json['machine'], fallback: '-'),
+    type: _stringValue(json['type'], fallback: '-'),
+    weightKg: _doubleValue(json['weightKg']),
+    points: _intValue(json['points']),
+    time: _dateValue(json['time']),
+  );
 
   Future<Object?> _request(
     String method,
@@ -519,5 +614,28 @@ class ApiSmartbinRepository implements SmartbinRepository {
       if (getName(value) == name) return value;
     }
     throw FormatException('Unknown $label: $name');
+  }
+}
+
+/// Mengurai aliran Server-Sent Events menjadi payload `data:` per event (event dipisah baris kosong).
+Stream<String> sseData(Stream<List<int>> bytes) async* {
+  final buffer = <String>[];
+  await for (final line in bytes.transform(utf8.decoder).transform(const LineSplitter())) {
+    if (line.isEmpty) {
+      if (buffer.isNotEmpty) yield buffer.join('\n');
+      buffer.clear();
+    } else if (line.startsWith('data:')) {
+      buffer.add(line.substring(5).trimLeft());
+    }
+  }
+}
+
+/// Hanya event telemetri berjenis `status` yang mengubah tampilan status mesin.
+bool isMachineStatusEvent(String data) {
+  try {
+    final decoded = jsonDecode(data);
+    return decoded is Map && decoded['kind'] == 'status';
+  } on FormatException {
+    return false;
   }
 }

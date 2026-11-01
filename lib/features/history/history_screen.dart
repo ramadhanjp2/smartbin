@@ -17,11 +17,10 @@ class HistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
-  static const _pageSize = 20;
+  static const DepositRange _allTime = (from: null, to: null);
 
   WasteType? _type;
   DateTimeRange? _range;
-  int _visible = _pageSize;
 
   Future<void> _pickRange() async {
     final now = Fmt.dateOnlyWib(DateTime.now());
@@ -36,35 +35,37 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (picked != null) setState(() => _range = picked);
   }
 
-  /// Filter jenis dilakukan di klien dari satu daftar lengkap, bukan memuat ulang seluruh halaman per jenis.
-  List<Deposit> _applyType(List<Deposit> list) => _type == null ? list : list.where((d) => d.type == _type).toList();
-
-  List<Deposit> _applyRange(List<Deposit> list) {
+  /// Rentang tanggal kalender WIB diubah menjadi batas waktu absolut untuk server (hari terakhir inklusif).
+  DepositRange get _rangeInstants {
     final r = _range;
-    if (r == null) return list;
-    final end = r.end.add(const Duration(days: 1));
-    return list.where((d) {
-      final local = Fmt.dateOnlyWib(d.deviceTime);
-      return !local.isBefore(r.start) && local.isBefore(end);
-    }).toList();
+    if (r == null) return _allTime;
+    const wib = Duration(hours: 7);
+    final from = DateTime.utc(r.start.year, r.start.month, r.start.day).subtract(wib);
+    final to = DateTime.utc(r.end.year, r.end.month, r.end.day + 1).subtract(wib).subtract(const Duration(milliseconds: 1));
+    return (from: from, to: to);
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final all = ref.watch(depositsProvider(null));
+    final range = _rangeInstants;
+    final DepositFilter filter = (type: _type, from: range.from, to: range.to);
+    final history = ref.watch(depositHistoryProvider(filter));
+    // Hitungan di chip mencakup semua tanggal; kartu aktivitas mengikuti rentang tanggal yang dipilih.
+    final statsAll = ref.watch(depositStatsProvider(_allTime));
+    final statsRange = _range == null ? statsAll : ref.watch(depositStatsProvider(range));
     final now = DateTime.now();
-    final allList = all.value ?? const <Deposit>[];
-    int count(WasteType? t) => t == null ? allList.length : allList.where((d) => d.type == t).length;
+    int count(WasteType? t) => statsAll.value?.of(t).count ?? 0;
 
     return Scaffold(
       appBar: const SmartbinAppBar(title: 'Riwayat'),
       body: RefreshIndicator(
         color: p.brand,
         onRefresh: () async {
-          ref.invalidate(depositsProvider);
+          ref.invalidate(depositHistoryProvider);
+          ref.invalidate(depositStatsProvider);
           try {
-            await ref.read(depositsProvider(null).future);
+            await ref.read(depositHistoryProvider(filter).future);
           } catch (_) {}
         },
         child: ListView(
@@ -80,7 +81,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Total ${allList.length} transaksi tercatat melalui jaringan IoT SmartBIN',
+              'Total ${count(null)} transaksi tercatat melalui jaringan IoT SmartBIN',
               style: context.text.bodySmall?.copyWith(color: p.textMuted),
             ),
             const SizedBox(height: 16),
@@ -140,9 +141,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            switch (all) {
-              AsyncValue(:final value?) => _content(context, _applyRange(_applyType(value)), now),
-              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(depositsProvider(null))),
+            switch (history) {
+              AsyncValue(:final value?) => _content(context, value, statsRange.value?.of(_type), filter, now),
+              AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(depositHistoryProvider(filter))),
               _ => const SkeletonList(count: 5),
             },
           ],
@@ -151,8 +152,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _content(BuildContext context, List<Deposit> list, DateTime now) {
+  Widget _content(BuildContext context, DepositHistoryState state, DepositTypeStats? stats, DepositFilter filter, DateTime now) {
     final p = context.palette;
+    final list = state.items;
     if (list.isEmpty) {
       return const EmptyView(
         icon: Icons.receipt_long_outlined,
@@ -161,13 +163,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
     }
 
-    final credited = list.where((d) => !d.isHeld);
-    final points = credited.fold<int>(0, (s, d) => s + d.points);
-    final grams = list.fold<int>(0, (s, d) => s + d.weightG);
-    final shown = list.take(_visible).toList();
-
+    // Angka kartu berasal dari server untuk seluruh riwayat pada filter ini, bukan dari halaman yang sudah dimuat.
+    final total = stats?.count ?? list.length;
     final groups = <String, List<Deposit>>{};
-    for (final d in shown) {
+    for (final d in list) {
       groups.putIfAbsent(Fmt.dayHeader(d.deviceTime, now), () => []).add(d);
     }
 
@@ -193,7 +192,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   Expanded(
                     child: _Stat(
                       label: 'Poin Terkumpul',
-                      value: Fmt.signedPoints(points),
+                      value: stats == null ? '…' : Fmt.signedPoints(stats.points),
                       unit: 'Poin',
                       foot: 'Poin aktif',
                       icon: Icons.stars_outlined,
@@ -203,9 +202,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   Expanded(
                     child: _Stat(
                       label: 'Total Bobot',
-                      value: Fmt.kg(grams),
+                      value: stats == null ? '…' : Fmt.kg(stats.weightG),
                       unit: 'kg',
-                      foot: '${list.length} kali pemilahan',
+                      foot: '$total kali pemilahan',
                       icon: Icons.hourglass_bottom,
                     ),
                   ),
@@ -242,19 +241,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               Icon(Icons.offline_pin_outlined, size: 16, color: p.textMuted),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  'Menampilkan ${shown.length} dari ${list.length} transaksi',
-                  style: context.text.labelMedium?.copyWith(color: p.textMuted),
-                ),
+                child: Text('Menampilkan ${list.length} dari $total transaksi', style: context.text.labelMedium?.copyWith(color: p.textMuted)),
               ),
             ],
           ),
         ),
-        if (shown.length < list.length)
+        if (state.loadMoreError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              errorText(state.loadMoreError!),
+              textAlign: TextAlign.center,
+              style: context.text.labelMedium?.copyWith(color: p.error),
+            ),
+          ),
+        if (state.hasMore)
           TextButton.icon(
-            onPressed: () => setState(() => _visible += _pageSize),
-            icon: const Icon(Icons.expand_more),
-            label: const Text('Muat Lebih Banyak Riwayat'),
+            onPressed: state.loadingMore ? null : () => ref.read(depositHistoryProvider(filter).notifier).loadMore(),
+            icon: state.loadingMore
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.expand_more),
+            label: Text(state.loadMoreError != null ? 'Coba Lagi' : 'Muat Lebih Banyak Riwayat'),
           ),
       ],
     );

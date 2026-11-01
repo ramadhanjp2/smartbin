@@ -165,6 +165,8 @@ lib/
     ├── auth/  card/  home/  history/  machines/
     └── notifications/  onboarding/  profile/  admin/
 
+> Layar besar (admin, profil, login, tautkan KTP) dipecah memakai `part`/`part of`: widget privatnya tinggal di berkas samping, misalnya `admin_management_summary.dart`, dan tetap satu library dengan layar utamanya. Tambahkan widget baru ke berkas yang sesuai, bukan ke layar utama.
+
 design/stitch/                    # desain Stitch + PRD (referensi, jangan diubah)
 test/
 ├── widget_test.dart              # unit test formatter
@@ -448,6 +450,8 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | API publik default; URL lokal dapat dipilih via `API_BASE_URL` |
 | Token di secure storage + refresh token | ✅ Selesai | `flutter_secure_storage`; sesi dipulihkan saat aplikasi dibuka |
 | Push notification | ⏳ Belum | FCM belum dikonfigurasi pada backend dan aplikasi (`firebase_messaging`) |
+| Status mesin realtime | ✅ Selesai | SSE `/machines/realtime` + polling cadangan 60 detik; berhenti saat layar tidak tampil |
+| Riwayat berhalaman | ✅ Selesai | Setoran dimuat 20 per halaman (cursor); total dan ringkasan dari `/deposits/stats`. Riwayat admin 50 per halaman |
 | Cache offline 50 riwayat | ⏳ Belum | `drift` atau `hive` (FR-HIST-04) |
 | Banner offline otomatis | ⏳ Belum | `connectivity_plus` |
 | Flavor `mock` / `dev` / `prod` | ⏳ Belum | |
@@ -557,6 +561,12 @@ Gateway dapat mengirim validasi kartu dan setoran melalui topic MQTT pada pola `
 
 Unggah foto laptop menggunakan `POST /api/v1/captures`, `X-Machine-Api-Key`, dan `Idempotency-Key` yang sama dengan UUID transaksi. Multipart memakai field `transaction_id`, `bin_id`, `class`, `confidence`, dan file `photo`. Backend menyimpan JPEG/PNG/WebP hingga 5 MiB di `CAPTURE_STORAGE_DIR`; Docker Compose memasang named volume `smartbin_captures`. Foto pada riwayat hanya dapat dibaca pemilik setoran atau admin dengan JWT melalui `GET /api/v1/captures/:transactionId`. Penyimpanan ini lokal persisten, bukan CDN; backup dan kebijakan retensi diperlukan sebelum produksi.
 
+**Kunci mesin per perangkat.** `MACHINE_API_KEY` adalah kunci bersama. Untuk membatasi dampak bila satu perangkat bocor, isi `MACHINE_API_KEYS=esp1=kunci-1,esp2=kunci-2` di `.env`: perangkat yang tercantum hanya menerima kunci miliknya (kunci bersama ditolak untuknya, begitu pula kunci perangkat lain), sedangkan perangkat yang tidak tercantum tetap memakai `MACHINE_API_KEY`. Berlaku untuk REST ingest setoran, status, dan unggah foto; jalur MQTT diamankan oleh kredensial broker. Migrasi bertahap: isi `MACHINE_API_KEYS` untuk satu perangkat, perbarui firmware/skrip perangkat itu, lalu lanjut ke perangkat berikutnya.
+
+**SSE di belakang Nginx.** Endpoint `/machines/realtime` mengirim header `X-Accel-Buffering: no` sehingga Nginx tidak menahan event. Bila memakai proxy lain, matikan buffering untuk path itu dan naikkan `proxy_read_timeout` (koneksi bersifat panjang).
+
+**Hash kata sandi.** Backend memakai `bcrypt` native (sebelumnya `bcryptjs`). Hash lama tetap valid (format `$2b$` sama), jadi tidak ada migrasi data. Paket `bcrypt` menyediakan binary prebuilt untuk musl (Alpine) x64/arm64, sehingga build image `node:24-alpine` tidak butuh compiler; cek log `docker compose build` saat deploy pertama.
+
 Validasi backend: jalankan `npm run build` dan `npm test` dari folder `backend`. Error API dinormalisasi menjadi `{ "code": "...", "message": "..." }` (error validasi juga menyertakan `details`).
 
 Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk jenis setoran `RESIDU` dan schema MQTT v2. Setelah snapshot status setiap device diverifikasi di MongoDB dan backup database sukses, jalankan [`20261031_mongodb_machine_telemetry.sql`](backend/docs/migrations/20261031_mongodb_machine_telemetry.sql) untuk menghapus kolom telemetry usang dari MySQL `machines`. Setelah itu jalankan [`20261101_performance_indexes.sql`](backend/docs/migrations/20261101_performance_indexes.sql). Jalankan setiap migrasi satu kali dalam urutan ini; jangan mengaktifkan `DB_SYNCHRONIZE` di production.
@@ -572,10 +582,11 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | POST | `/api/v1/auth/logout` | Pengguna |
 | GET, PATCH | `/api/v1/me` | Pengguna |
 | POST, DELETE | `/api/v1/cards/link`, `/api/v1/cards/me` | Pengguna |
-| GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
+| GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/stats`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
 | GET | `/api/v1/captures/:transactionId` | Pemilik setoran atau admin (JWT) |
 | POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
 | GET | `/api/v1/admin/history` | Admin (semua setoran, termasuk setoran tanpa KTP tertaut) |
+| GET | `/api/v1/admin/stats/daily` | Admin (berat per hari, WIB; `days` 1–31, default 7) |
 | PUT, POST | `/api/v1/admin/rates`, `/api/v1/machines/:id/reset` | Admin |
 | POST | `/api/v1/machines/:id/deposits`, `/api/v1/machines/:id/status` | Mesin (`X-Machine-Api-Key`) |
 | POST | `/api/v1/captures` | Laptop AI (`X-Machine-Api-Key`) |
@@ -583,7 +594,9 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | GET | `/api/v1/machines/realtime` | Pengguna (SSE) |
 | POST | `/api/v1/machines/:deviceId/command` | Admin |
 
-Riwayat admin mengambil setoran terbaru dari MySQL (parameter `limit`, default 500, maksimum 1.000; `from` opsional berformat ISO 8601), termasuk status `HELD`/`CREDITED` dan transaksi yang belum terkait ke pengguna. Setelah setoran MQTT baru masuk, tekan **Muat ulang riwayat** pada menu admin. Jenis `RESIDU` ditampilkan terpisah dan bernilai nol poin.
+Riwayat admin mengambil setoran terbaru dari MySQL (parameter `limit`, default 500, maksimum 1.000; `from` opsional berformat ISO 8601; `paged=true` mengubah respons menjadi `{ "data": [...], "nextCursor": "..." }` dan menerima `cursor` untuk halaman berikutnya, sedangkan tanpa `paged` respons tetap berupa array agar APK lama kompatibel), termasuk status `HELD`/`CREDITED` dan transaksi yang belum terkait ke pengguna. Setelah setoran MQTT baru masuk, tekan **Muat ulang riwayat** pada menu admin. Jenis `RESIDU` ditampilkan terpisah dan bernilai nol poin.
+
+`GET /api/v1/deposits/stats` (opsional `from`/`to`) mengembalikan jumlah, berat (gram), dan poin per jenis (`organik`, `anorganik`, `residu`) dari **seluruh** riwayat pengguna pada rentang itu, sehingga angka di layar Riwayat tetap benar walau daftar baru termuat sebagian. Poin hanya menghitung setoran `CREDITED`.
 
 Contoh registrasi:
 
@@ -694,6 +707,20 @@ final response = await http.get(
 
 Pengaturan broker ada di `MQTT_URL`, `MQTT_CLIENT_ID`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_SUBSCRIBE_TOPIC`, dan `MQTT_DEVICE_MACHINE_MAP` pada `backend/.env`. Gateway memakai `telemetry/auth`, `telemetry/deposit`, `telemetry/status`; balasan dan command memakai topic `command/...` pada pola yang sama. Setelah konfigurasi berubah, jalankan `docker compose up -d --build api`. Detail payload, QoS, ACL dan LWT ada di [`backend/docs/mqtt-smartbin.md`](backend/docs/mqtt-smartbin.md); flow perangkat yang diselaraskan ada di [`backend/docs/Alur SmartBIN v2 — Spesifikasi Lengkap.md`](backend/docs/Alur%20SmartBIN%20v2%20%E2%80%94%20Spesifikasi%20Lengkap.md).
 
+### Firmware ESP32-B (uji awal)
+
+Project firmware ESP32-B ada di [`firmware/esp32-b`](firmware/esp32-b). Tahap uji ini memakai ESP-IDF 5.2+, koneksi MQTT WSS resmi ke broker, heartbeat `esp2`, pembacaan PN532 melalui I2C, validasi kartu melalui `telemetry/auth`, dan UART ke ESP32-A. UID kartu hanya diproses di RAM untuk membuat HMAC-SHA256; UID mentah tidak dicetak atau dikirim. Firmware uji ini **tidak menggerakkan aktuator**. Credential MQTT dan `CARD_HMAC_SECRET` dikompilasi ke firmware dan dapat diekstrak dari perangkat; gunakan hanya untuk pengujian, batasi ACL akun `esp2`, dan rotasi credential sebelum pemakaian produksi.
+
+1. Ikuti [`wiring_smartbin.pdf`](firmware/wiring_smartbin.pdf): PN532 mode I2C memakai SDA GPIO 21, SCL GPIO 22, VCC 3,3 V (pastikan sesuai breakout), dan GND. Microswitch slot KTP NO memakai GPIO 4 dengan input aktif LOW.
+2. Hubungkan UART silang pada 115200 baud: TX ESP32-A GPIO 17 → RX ESP32-B GPIO 16; TX ESP32-B GPIO 17 → RX ESP32-A GPIO 16; satukan GND. ESP32-B memakai suplai 5 V buck ke VIN saat bekerja; cabut suplai VIN sebelum memprogram lewat USB agar tidak ada dua sumber 5 V.
+3. Dari ESP-IDF Command Prompt, buka folder `firmware/esp32-b`, lalu jalankan `idf.py set-target esp32` dan `idf.py menuconfig`. Isi Wi-Fi SSID/password, credential MQTT `esp2`, dan `CARD_HMAC_SECRET` yang **harus sama persis** dengan backend. Secret tersimpan di `sdkconfig` lokal yang diabaikan Git.
+4. Pastikan ACL broker mengizinkan akun `esp2` publish ke `smartbin/esp2/telemetry/#` dan subscribe ke `smartbin/esp2/command/#`. Pastikan `MQTT_DEVICE_MACHINE_MAP` di backend memetakan `esp2` ke kode mesin yang sudah terdaftar.
+5. Build dan flash dengan `idf.py build`, lalu `idf.py -p COMx flash monitor` (ganti `COMx` sesuai port board). Monitor menampilkan hasil koneksi, heartbeat, deteksi PN532, dan hasil validasi tanpa mencetak identitas kartu.
+
+Saat microswitch aktif LOW, ESP32-B membaca UID PN532, menghitung HMAC, mengirim `CARD_IN <uid_hash>` ke ESP32-A, dan meminta validasi ke backend. Saat KTP dikeluarkan, ESP32-B mengirim `CARD_OUT`. Gateway meneruskan balasan MQTT ke UART sebagai `MQTT_MSG <topik> <json>` dan menerima permintaan publish ESP32-A dalam format `MQTT_PUB <topik-telemetry> <json>`. Status koneksi dikirim sebagai `NET online` atau `NET offline`. PN532 memakai pin default yang dapat diubah lewat menuconfig. Heartbeat uji melaporkan `ai_online: false`; nilai kapasitas dan jarak sensor sengaja tidak dikirim karena belum diukur. Command `ping` hanya mengirim ulang status; command aktuator diabaikan.
+
+Jika menggunakan Arduino IDE, gunakan sketch terpisah di [`firmware/esp32-b-arduino/esp32_b`](firmware/esp32-b-arduino/esp32_b), bukan folder ESP-IDF di atas. Pilih board **ESP32 Dev Module** dengan Arduino-ESP32 core 3.0.4+, lalu pasang library **WebSockets** (Markus Sattler) versi 2+, **Adafruit PN532**, dan **ArduinoJson**. Salin `secrets.example.h` menjadi `secrets.h`, isi Wi-Fi, MQTT ESP2, dan secret HMAC secara lokal, lalu buka `esp32_b.ino`, pilih COM port, dan tekan Upload. Kode ini membungkus MQTT 3.1.1 di binary WebSocket frame melalui WSS `/mqtt` dengan subprotocol `mqtt`, memverifikasi TLS terhadap GTS Root R4 dari `broker_root_ca.h`, dan mengikuti wiring PN532 GPIO21/22, slot GPIO4, serta UART GPIO16/17. Perbarui file CA sebelum kedaluwarsa pada Juni 2036 atau jika rantai sertifikat broker berubah.
+
 Backend API membaca konfigurasi langsung dari `backend/.env` yang dipasang read-only sebagai `/app/.env` di container; Compose juga memakai file lokal tersebut untuk konfigurasi service database. Pertahankan `.env` di host dan jangan masukkan ke Git. Log API ditulis ke `backend/logs/api.log` (bind mount) sekaligus tetap tersedia melalui `docker compose logs`; log Docker memakai rotasi 10 MiB × 5 file. Atur `API_LOG_DIR` pada `.env` jika direktori log host ingin dipindahkan. Terapkan kebijakan rotasi/retensi host pada file bind-mount sesuai kebutuhan disk.
 
 Log request HTTP mencatat JSON event `http.request` saat request mulai dan selesai, dengan `requestId`, metode, route template, fitur/menu, status HTTP, durasi, serta ID akun internal/role bila sudah terautentikasi. ID korelasi dikirim kembali pada header `X-Request-Id`; klien dapat mengirim header yang sama (1–80 karakter alfanumerik, titik, garis bawah, atau strip) untuk menyambungkan log dengan laporan pengguna. Error HTTP memiliki event `http.exception`; alur MQTT mencatat koneksi, subscription, dan keberhasilan/kegagalan pemrosesan per device/topic tanpa mencatat isi payload. Token, kata sandi, NIK, UID kartu, dan body request tidak dicatat.
@@ -714,7 +741,7 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 - Pengiriman push FCM dan pendaftaran token perangkat belum diaktifkan; backend hanya menyimpan dan menyajikan notifikasi aplikasi.
 - Firmware ESP32, layanan AI laptop, push FCM, serta ACK aplikasi untuk penyelesaian aksi fisik belum ada di repository ini. Samakan implementasi perangkat dengan topic/payload dokumentasi sebelum mengaktifkan mesin.
 - Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.
-- Lockout login disimpan di memori proses dan kunci mesin saat ini satu nilai bersama; gunakan penyimpanan pembatasan terdistribusi dan kunci per mesin sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
+- Lockout login disimpan di memori proses; gunakan penyimpanan pembatasan terdistribusi sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
 - Akun yang dinonaktifkan admin langsung kehilangan refresh token (tidak bisa memperpanjang sesi), tetapi access token yang sudah terbit tetap berlaku sampai kedaluwarsa (maksimal 15 menit). Sesi kedaluwarsa dibersihkan otomatis setiap 6 jam.
 
 ---

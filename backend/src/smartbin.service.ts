@@ -12,7 +12,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcryptjs";
+import * as bcrypt from "bcrypt";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   DataSource,
@@ -37,6 +37,7 @@ import { CaptureStorageService } from "./capture-storage.service";
 import {
   AdminHistoryQueryDto,
   DepositQueryDto,
+  DepositStatsQueryDto,
   IngestDepositDto,
   LoginDto,
   RegisterDto,
@@ -447,14 +448,7 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       data: await Promise.all(
         data.map((deposit) => this.publicDeposit(deposit)),
       ),
-      nextCursor: hasMore
-        ? Buffer.from(
-            JSON.stringify({
-              deviceTime: data[data.length - 1].deviceTime.toISOString(),
-              id: data[data.length - 1].id,
-            }),
-          ).toString("base64url")
-        : null,
+      nextCursor: hasMore ? this.encodeCursor(data[data.length - 1]) : null,
     };
   }
 
@@ -591,6 +585,7 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
   }
 
   async adminHistory(query: AdminHistoryQueryDto): Promise<unknown> {
+    if (query.paged) return this.adminHistoryPage(query);
     const rows = await this.depositsRepo.find({
       relations: { machine: true, user: true },
       where: query.from
@@ -599,7 +594,43 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       order: { deviceTime: "DESC" },
       take: query.limit,
     });
-    return rows.map((deposit) => ({
+    return rows.map((deposit) => this.adminRecord(deposit));
+  }
+
+  private async adminHistoryPage(
+    query: AdminHistoryQueryDto,
+  ): Promise<{ data: unknown[]; nextCursor: string | null }> {
+    const builder = this.depositsRepo
+      .createQueryBuilder("deposit")
+      .leftJoinAndSelect("deposit.machine", "machine")
+      .leftJoinAndSelect("deposit.user", "user")
+      .orderBy("deposit.deviceTime", "DESC")
+      .addOrderBy("deposit.id", "DESC")
+      .take(query.limit + 1);
+    if (query.from)
+      builder.andWhere("deposit.deviceTime >= :from", {
+        from: new Date(query.from),
+      });
+    if (query.cursor) {
+      const cursor = this.decodeCursor(query.cursor);
+      builder.andWhere(
+        "(deposit.deviceTime < :cursorTime OR (deposit.deviceTime = :cursorTime AND deposit.id < :cursorId))",
+        { cursorTime: cursor.deviceTime, cursorId: cursor.id },
+      );
+    }
+    const rows = await builder.getMany();
+    const page = rows.slice(0, query.limit);
+    return {
+      data: page.map((deposit) => this.adminRecord(deposit)),
+      nextCursor:
+        rows.length > query.limit
+          ? this.encodeCursor(page[page.length - 1])
+          : null,
+    };
+  }
+
+  private adminRecord(deposit: DepositEntity): Record<string, unknown> {
+    return {
       id: deposit.transactionId,
       userId: deposit.userId ?? "-",
       userName: deposit.user?.name ?? "Pengguna tidak diketahui",
@@ -613,7 +644,89 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       weightKg: Number((deposit.weightG / 1000).toFixed(3)),
       points: deposit.points,
       time: deposit.deviceTime.toISOString(),
-    }));
+    };
+  }
+
+  /** Berat sampah per hari (WIB, UTC+7) untuk grafik admin; hari tanpa setoran bernilai 0. */
+  async adminDailyWeights(
+    days: number,
+  ): Promise<Array<{ date: string; weightKg: number }>> {
+    const wibOffsetMs = 7 * 60 * 60_000;
+    const wibNow = new Date(Date.now() + wibOffsetMs);
+    const firstDay = Date.UTC(
+      wibNow.getUTCFullYear(),
+      wibNow.getUTCMonth(),
+      wibNow.getUTCDate() - (days - 1),
+    );
+    const rows = await this.depositsRepo
+      .createQueryBuilder("deposit")
+      .select(
+        "DATE_FORMAT(DATE_ADD(deposit.deviceTime, INTERVAL 7 HOUR), '%Y-%m-%d')",
+        "bucket",
+      )
+      .addSelect("COALESCE(SUM(deposit.weightG), 0)", "weightG")
+      .where("deposit.deviceTime >= :since", {
+        since: new Date(firstDay - wibOffsetMs),
+      })
+      .groupBy("bucket")
+      .getRawMany<{ bucket: string; weightG: string }>();
+    const byDay = new Map(rows.map((row) => [row.bucket, Number(row.weightG)]));
+    return Array.from({ length: days }, (_, index) => {
+      const date = new Date(firstDay + index * 24 * 60 * 60_000)
+        .toISOString()
+        .slice(0, 10);
+      return {
+        date,
+        weightKg: Number(((byDay.get(date) ?? 0) / 1000).toFixed(3)),
+      };
+    });
+  }
+
+  /** Ringkasan riwayat pengguna untuk seluruh data (bukan hanya halaman yang termuat) agar angka layar tetap benar. */
+  async depositStats(
+    userId: string,
+    query: DepositStatsQueryDto,
+  ): Promise<
+    Record<string, { count: number; weightG: number; points: number }>
+  > {
+    const builder = this.depositsRepo
+      .createQueryBuilder("deposit")
+      .select("deposit.type", "type")
+      .addSelect("COUNT(*)", "count")
+      .addSelect("COALESCE(SUM(deposit.weightG), 0)", "weightG")
+      .addSelect(
+        "COALESCE(SUM(CASE WHEN deposit.status = 'CREDITED' THEN deposit.points ELSE 0 END), 0)",
+        "points",
+      )
+      .where("deposit.userId = :userId", { userId })
+      .groupBy("deposit.type");
+    if (query.from)
+      builder.andWhere("deposit.deviceTime >= :from", {
+        from: new Date(query.from),
+      });
+    if (query.to)
+      builder.andWhere("deposit.deviceTime <= :to", {
+        to: new Date(query.to),
+      });
+    const rows = await builder.getRawMany<{
+      type: "ORGANIK" | "ANORGANIK" | "RESIDU";
+      count: string;
+      weightG: string;
+      points: string;
+    }>();
+    const pick = (type: string) => {
+      const row = rows.find((item) => item.type === type);
+      return {
+        count: Number(row?.count ?? 0),
+        weightG: Number(row?.weightG ?? 0),
+        points: Number(row?.points ?? 0),
+      };
+    };
+    return {
+      organik: pick("ORGANIK"),
+      anorganik: pick("ANORGANIK"),
+      residu: pick("RESIDU"),
+    };
   }
 
   async updateMachine(id: string, dto: UpdateMachineDto): Promise<void> {
@@ -685,7 +798,9 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
     machineKey: string | undefined,
   ): Promise<string> {
     this.assertMachineKey(machineKey);
-    return this.resolveDeviceId(machineId);
+    const deviceId = await this.resolveDeviceId(machineId);
+    this.assertMachineKey(machineKey, deviceId);
+    return deviceId;
   }
 
   async assertCaptureAccess(
@@ -713,6 +828,10 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
         code: "MACHINE_NOT_FOUND",
         message: "Mesin tidak ditemukan.",
       });
+    this.assertMachineKey(
+      machineKey,
+      this.deviceIdForMachineCode(machine.code) ?? undefined,
+    );
     const uidHash = this.cardHash(dto.uid);
     return this.createDeposit(
       machine,
@@ -1108,24 +1227,50 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       .digest("hex");
   }
 
-  assertMachineKey(provided: string | undefined): void {
-    const expected = this.config.getOrThrow<string>("MACHINE_API_KEY");
-    if (!provided)
-      throw new UnauthorizedException({
-        code: "INVALID_MACHINE_KEY",
-        message: "Kunci mesin tidak valid.",
-      });
-    const actualBuffer = Buffer.from(provided);
-    const expectedBuffer = Buffer.from(expected);
-    if (
-      actualBuffer.length !== expectedBuffer.length ||
-      !timingSafeEqual(actualBuffer, expectedBuffer)
-    ) {
-      throw new UnauthorizedException({
-        code: "INVALID_MACHINE_KEY",
-        message: "Kunci mesin tidak valid.",
-      });
+  /**
+   * Memeriksa kunci mesin. `MACHINE_API_KEYS` (`esp1=kunci1,esp2=kunci2`) memberi kunci per perangkat:
+   * perangkat yang punya kunci sendiri hanya menerima kunci itu (kunci bersama ditolak), sedangkan
+   * perangkat tanpa kunci khusus tetap memakai `MACHINE_API_KEY`. Tanpa `deviceId`, kunci yang
+   * valid untuk perangkat mana pun diterima (gerbang awal sebelum perangkat diketahui).
+   */
+  assertMachineKey(provided: string | undefined, deviceId?: string): void {
+    const shared = this.config.getOrThrow<string>("MACHINE_API_KEY");
+    const perDevice = this.perDeviceMachineKeys();
+    let valid = false;
+    if (provided) {
+      if (deviceId === undefined)
+        valid =
+          this.safeEqual(provided, shared) ||
+          [...perDevice.values()].some((key) => this.safeEqual(provided, key));
+      else {
+        const own = perDevice.get(deviceId);
+        valid = this.safeEqual(provided, own ?? shared);
+      }
     }
+    if (!valid)
+      throw new UnauthorizedException({
+        code: "INVALID_MACHINE_KEY",
+        message: "Kunci mesin tidak valid.",
+      });
+  }
+
+  private perDeviceMachineKeys(): Map<string, string> {
+    const keys = new Map<string, string>();
+    const raw = this.config.get<string>("MACHINE_API_KEYS", "");
+    for (const entry of raw.split(",")) {
+      const separator = entry.indexOf("=");
+      if (separator < 1) continue;
+      const deviceId = entry.slice(0, separator).trim();
+      const key = entry.slice(separator + 1).trim();
+      if (deviceId && key) keys.set(deviceId, key);
+    }
+    return keys;
+  }
+
+  private safeEqual(a: string, b: string): boolean {
+    const left = Buffer.from(a);
+    const right = Buffer.from(b);
+    return left.length === right.length && timingSafeEqual(left, right);
   }
 
   private isDuplicateKey(error: unknown): boolean {
@@ -1135,6 +1280,15 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       "code" in error &&
       error.code === "ER_DUP_ENTRY"
     );
+  }
+
+  private encodeCursor(deposit: DepositEntity): string {
+    return Buffer.from(
+      JSON.stringify({
+        deviceTime: deposit.deviceTime.toISOString(),
+        id: deposit.id,
+      }),
+    ).toString("base64url");
   }
 
   private decodeCursor(value: string): { deviceTime: Date; id: string } {

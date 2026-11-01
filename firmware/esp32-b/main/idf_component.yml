@@ -1,0 +1,3 @@
+dependencies:
+  espressif/mqtt: "^1.1.0"
+  jef-sure/pn532: "^0.7.6"

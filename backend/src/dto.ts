@@ -116,12 +116,33 @@ export class AdminHistoryQueryDto {
   @IsISO8601()
   from?: string;
 
+  /** true = respons berhalaman `{ data, nextCursor }`; default tetap array agar APK lama kompatibel. */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === "true")
+  @IsBoolean()
+  paged?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  cursor?: string;
+
   @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
   @Max(1000)
   limit = 500;
+}
+
+export class DepositStatsQueryDto {
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
 }
 
 export class IngestDepositDto {

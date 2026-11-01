@@ -31,6 +31,12 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/firmware/esp32-b/managed_components/
+/firmware/esp32-b/build/
+/firmware/esp32-b/sdkconfig
+/firmware/esp32-b/sdkconfig.old
+/firmware/esp32-b-arduino/esp32_b/secrets.h
+/firmware/esp32-b-arduino/esp32_b/build/
 /coverage/
 
 # Symbolication related

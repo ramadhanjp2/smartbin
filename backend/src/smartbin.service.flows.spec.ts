@@ -27,10 +27,19 @@ type Mocks = Partial<{
   captures: object;
 }>;
 
-function build(mocks: Mocks = {}): SmartbinService {
+function build(
+  mocks: Mocks = {},
+  env: Record<string, string> = {},
+): SmartbinService {
   const config = new ConfigService();
-  jest.spyOn(config, "get").mockImplementation((_key, fallback) => fallback);
-  jest.spyOn(config, "getOrThrow").mockReturnValue("test-secret" as never);
+  jest
+    .spyOn(config, "get")
+    .mockImplementation(
+      (key: string, fallback?: unknown) => env[key] ?? fallback,
+    );
+  jest
+    .spyOn(config, "getOrThrow")
+    .mockImplementation((key: string) => (env[key] ?? "test-secret") as never);
   return new SmartbinService(
     (mocks.users ?? {}) as Repository<UserEntity>,
     (mocks.cards ?? {}) as Repository<CardEntity>,
@@ -50,10 +59,21 @@ function build(mocks: Mocks = {}): SmartbinService {
 /** Query builder palsu yang mengembalikan nilai tetap dan merekam pemanggilan. */
 function queryBuilder(result: { one?: unknown; many?: unknown[] }) {
   const qb: Record<string, jest.Mock> = {};
-  for (const method of ["select", "addSelect", "where", "andWhere", "groupBy"])
+  for (const method of [
+    "select",
+    "addSelect",
+    "where",
+    "andWhere",
+    "groupBy",
+    "leftJoinAndSelect",
+    "orderBy",
+    "addOrderBy",
+    "take",
+  ])
     qb[method] = jest.fn().mockReturnValue(qb);
   qb.getRawOne = jest.fn().mockResolvedValue(result.one);
   qb.getRawMany = jest.fn().mockResolvedValue(result.many ?? []);
+  qb.getMany = jest.fn().mockResolvedValue(result.many ?? []);
   return qb;
 }
 
@@ -367,5 +387,150 @@ describe("SmartbinService photo flag", () => {
       { id: "d1" },
       { hasPhoto: false },
     );
+  });
+});
+
+describe("SmartbinService machine keys", () => {
+  const env = {
+    MACHINE_API_KEY: "shared-key",
+    MACHINE_API_KEYS: "esp1=key-one, esp2=key-two",
+  };
+  const service = () => build({}, env);
+
+  it("perangkat dengan kunci sendiri hanya menerima kunci itu", () => {
+    expect(() => service().assertMachineKey("key-one", "esp1")).not.toThrow();
+    expect(() => service().assertMachineKey("shared-key", "esp1")).toThrow(
+      UnauthorizedException,
+    );
+    expect(() => service().assertMachineKey("key-two", "esp1")).toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it("perangkat tanpa kunci khusus tetap memakai kunci bersama", () => {
+    expect(() =>
+      service().assertMachineKey("shared-key", "esp3"),
+    ).not.toThrow();
+    expect(() => service().assertMachineKey("key-one", "esp3")).toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it("gerbang awal tanpa deviceId menerima kunci bersama atau kunci perangkat mana pun", () => {
+    expect(() => service().assertMachineKey("shared-key")).not.toThrow();
+    expect(() => service().assertMachineKey("key-two")).not.toThrow();
+    expect(() => service().assertMachineKey("salah")).toThrow(
+      UnauthorizedException,
+    );
+    expect(() => service().assertMachineKey(undefined)).toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it("tanpa MACHINE_API_KEYS perilaku lama tidak berubah", () => {
+    const legacy = build({}, { MACHINE_API_KEY: "shared-key" });
+    expect(() => legacy.assertMachineKey("shared-key", "esp1")).not.toThrow();
+    expect(() => legacy.assertMachineKey("key-one", "esp1")).toThrow(
+      UnauthorizedException,
+    );
+  });
+});
+
+describe("SmartbinService.adminHistory paging", () => {
+  const row = (id: string, time: string) => ({
+    id,
+    transactionId: `tx-${id}`,
+    userId: null,
+    user: null,
+    machine: { name: "Unit" },
+    machineId: "m1",
+    type: "ORGANIK",
+    weightG: 1000,
+    points: 40,
+    deviceTime: new Date(time),
+  });
+
+  it("mengembalikan nextCursor yang dapat dipakai untuk halaman berikutnya", async () => {
+    const qb = queryBuilder({
+      many: [
+        row("c", "2026-11-01T03:00:00.000Z"),
+        row("b", "2026-11-01T02:00:00.000Z"),
+        row("a", "2026-11-01T01:00:00.000Z"),
+      ],
+    });
+    const service = build({ deposits: { createQueryBuilder: () => qb } });
+
+    const page = (await service.adminHistory({
+      limit: 2,
+      paged: true,
+    })) as { data: Array<{ id: string }>; nextCursor: string | null };
+
+    expect(page.data.map((item) => item.id)).toEqual(["tx-c", "tx-b"]);
+    expect(qb.take).toHaveBeenCalledWith(3);
+    expect(
+      JSON.parse(Buffer.from(page.nextCursor!, "base64url").toString()),
+    ).toEqual({
+      deviceTime: "2026-11-01T02:00:00.000Z",
+      id: "b",
+    });
+  });
+
+  it("nextCursor null pada halaman terakhir dan cursor memfilter baris yang sudah terbaca", async () => {
+    const qb = queryBuilder({ many: [row("a", "2026-11-01T01:00:00.000Z")] });
+    const service = build({ deposits: { createQueryBuilder: () => qb } });
+    const cursor = Buffer.from(
+      JSON.stringify({ deviceTime: "2026-11-01T02:00:00.000Z", id: "b" }),
+    ).toString("base64url");
+
+    const page = (await service.adminHistory({
+      limit: 2,
+      paged: true,
+      cursor,
+    })) as { nextCursor: string | null };
+
+    expect(page.nextCursor).toBeNull();
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("deposit.id < :cursorId"),
+      { cursorTime: new Date("2026-11-01T02:00:00.000Z"), cursorId: "b" },
+    );
+  });
+});
+
+describe("SmartbinService.adminDailyWeights", () => {
+  afterEach(() => jest.useRealTimers());
+
+  it("mengisi hari tanpa setoran dengan 0 dan memakai batas awal hari WIB", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-11-01T20:00:00.000Z"));
+    const qb = queryBuilder({
+      many: [{ bucket: "2026-11-01", weightG: "1500" }],
+    });
+    const service = build({ deposits: { createQueryBuilder: () => qb } });
+
+    await expect(service.adminDailyWeights(3)).resolves.toEqual([
+      { date: "2026-10-31", weightKg: 0 },
+      { date: "2026-11-01", weightKg: 1.5 },
+      { date: "2026-11-02", weightKg: 0 },
+    ]);
+    expect(qb.where).toHaveBeenCalledWith("deposit.deviceTime >= :since", {
+      since: new Date("2026-10-30T17:00:00.000Z"),
+    });
+  });
+});
+
+describe("SmartbinService.depositStats", () => {
+  it("meringkas jumlah, berat, dan poin per jenis dari seluruh data", async () => {
+    const qb = queryBuilder({
+      many: [
+        { type: "ORGANIK", count: "30", weightG: "12000", points: "480" },
+        { type: "RESIDU", count: "2", weightG: "700", points: "0" },
+      ],
+    });
+    const service = build({ deposits: { createQueryBuilder: () => qb } });
+
+    await expect(service.depositStats("user-1", {})).resolves.toEqual({
+      organik: { count: 30, weightG: 12000, points: 480 },
+      anorganik: { count: 0, weightG: 0, points: 0 },
+      residu: { count: 2, weightG: 700, points: 0 },
+    });
   });
 });

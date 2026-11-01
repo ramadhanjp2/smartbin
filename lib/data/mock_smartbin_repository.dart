@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../core/format/formatters.dart';
 import 'models.dart';
 import 'smartbin_repository.dart';
 
@@ -256,9 +257,9 @@ class MockSmartbinRepository implements SmartbinRepository {
       if (_failedLogins >= 3) {
         _lockedUntil = DateTime.now().add(const Duration(minutes: 5));
         _failedLogins = 0;
-              throw const AppException('3 kali gagal berturut-turut. Login dikunci selama 5 menit.');
+        throw const AppException('3 kali gagal berturut-turut. Login dikunci selama 5 menit.');
       }
-            throw AppException('NIK/email atau kata sandi salah. Tersisa ${3 - _failedLogins}x percobaan.');
+      throw AppException('NIK/email atau kata sandi salah. Tersisa ${3 - _failedLogins}x percobaan.');
     }
     if (asAdmin && match.user.role != UserRole.admin) {
       throw const AppException('Akun ini tidak memiliki akses Admin / Teknisi.');
@@ -419,6 +420,37 @@ class MockSmartbinRepository implements SmartbinRepository {
   @override
   Future<List<Deposit>> recentDeposits({int limit = 3}) async => (await deposits()).take(limit).toList();
 
+  List<Deposit> _filtered({WasteType? type, DateTime? from, DateTime? to}) => [
+    for (final d in _deposits)
+      if ((type == null || d.type == type) && (from == null || !d.deviceTime.isBefore(from)) && (to == null || !d.deviceTime.isAfter(to))) d,
+  ]..sort((a, b) => b.deviceTime.compareTo(a.deviceTime));
+
+  @override
+  Future<DepositPage> depositsPage({WasteType? type, DateTime? from, DateTime? to, String? cursor, int limit = 20}) async {
+    await _delay();
+    _user;
+    final all = _filtered(type: type, from: from, to: to);
+    final start = int.tryParse(cursor ?? '') ?? 0;
+    final end = start + limit < all.length ? start + limit : all.length;
+    return DepositPage(items: all.sublist(start, end), nextCursor: end < all.length ? '$end' : null);
+  }
+
+  @override
+  Future<DepositStats> depositStats({DateTime? from, DateTime? to}) async {
+    await _delay();
+    _user;
+    DepositTypeStats stats(WasteType type) {
+      final rows = _filtered(type: type, from: from, to: to);
+      return DepositTypeStats(
+        count: rows.length,
+        weightG: rows.fold(0, (sum, d) => sum + d.weightG),
+        points: rows.where((d) => !d.isHeld).fold(0, (sum, d) => sum + d.points),
+      );
+    }
+
+    return DepositStats(organik: stats(WasteType.organik), anorganik: stats(WasteType.anorganik), residu: stats(WasteType.residu));
+  }
+
   @override
   Future<Deposit> deposit(String transactionId) async {
     await _delay();
@@ -552,4 +584,19 @@ class MockSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<List<AdminHistoryRecord>> adminHistory() async => const [];
+
+  @override
+  Future<AdminHistoryPage> adminHistoryPage({String? cursor, int limit = 50}) async => const AdminHistoryPage(items: []);
+
+  @override
+  Future<List<DailyWeight>> adminDailyWeights({int days = 7}) async {
+    final today = Fmt.dateOnlyWib(DateTime.now());
+    return [
+      for (var i = days - 1; i >= 0; i--)
+        DailyWeight(date: DateTime.utc(today.year, today.month, today.day).subtract(Duration(days: i)), weightKg: 0),
+    ];
+  }
+
+  @override
+  Stream<void> machineStatusEvents() => const Stream.empty();
 }
