@@ -8,7 +8,7 @@ services:
       MYSQL_USER: ${DB_USERNAME:-smartbin}
       MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in backend/.env}
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${DB_PORT:-3306}:3306"
     volumes:
       - smartbin_mysql_data:/var/lib/mysql
     healthcheck:
@@ -48,7 +48,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in backend/.env}
       MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-smartbin_realtime}
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${DB_BIND_ADDRESS:-127.0.0.1}:${MONGO_PORT:-27017}:27017"
     volumes:
       - smartbin_mongodb_data:/data/db
       - smartbin_mongodb_config:/data/configdb

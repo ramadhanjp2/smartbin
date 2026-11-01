@@ -136,7 +136,7 @@ Mode mock memakai data dari [lib/data/mock_smartbin_repository.dart](lib/data/mo
 
 Skenario yang bisa dicoba:
 
-- **Gagal login:** sandi salah 5 kali akan mengunci login selama 5 menit.
+- **Gagal login:** pada mode mock, sandi salah 5 kali mengunci login selama 5 menit. Backend asli mengunci setelah `LOGIN_MAX_ATTEMPTS` percobaan (default 3) selama 5 menit.
 - **Tautkan KTP:** dari banner Beranda pilih Tautkan Sekarang, lalu Mulai Pindai NFC pada HP Android dengan NFC. Mode API menautkan UID kartu yang terbaca ke backend; mode mock menggunakan data demo dan mengkreditkan 120 poin tertahan.
 - **Registrasi baru:** daftar dengan NIK 16 digit, nama, email umum, dan kata sandi. Setelah daftar, aplikasi membuka layar tautkan KTP.
 - **Admin:** pilih Unit #04 yang berstatus Gangguan untuk mencoba tombol reset.
@@ -196,7 +196,7 @@ Aturan yang **tidak boleh dilanggar**:
 | State management | `flutter_riverpod` 3.x |
 | Navigasi | `go_router` 18.x |
 | Format tanggal/angka | `intl` (locale `id_ID`) |
-| Font | `google_fonts` (Plus Jakarta Sans) |
+| Font | `google_fonts` (Plus Jakarta Sans, dibundel di folder `google_fonts/`, tanpa unduhan runtime) |
 | Preferensi lokal | `shared_preferences` (tema, onboarding, notifikasi) |
 
 Tambahkan paket baru hanya setelah **disepakati tim**, dan cek dulu kompatibilitasnya dengan Flutter 3.47.
@@ -371,7 +371,7 @@ flutter build apk --dart-define=API_BASE_URL=https://api-smartbin.ramadhanjp.my.
 
 Token akses dan refresh disimpan menggunakan `flutter_secure_storage`, lalu sesi dicoba dipulihkan saat aplikasi dibuka kembali. Android release hanya mengizinkan koneksi HTTPS; HTTP cleartext untuk alamat lokal diaktifkan **khusus manifest debug**, bukan APK release. Untuk HP fisik, pastikan backend mendengarkan di `0.0.0.0`, firewall membuka port API, dan HP berada pada jaringan yang dapat menjangkau komputer. Chrome juga memerlukan konfigurasi CORS backend yang mengizinkan origin aplikasi.
 
-API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. NFC di aplikasi masih memakai pembaca mock; integrasi baca kartu pada ponsel/penautan UID ke akun produksi belum selesai. Mesin perlu mengirim UID KTP yang sama dengan yang ditautkan ke backend. Endpoint telemetri detail dan push FCM juga belum tersedia di MVP backend.
+API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. Pembacaan UID NFC Android sudah aktif (lihat [Uji pemindaian NFC e-KTP](#uji-pemindaian-nfc-e-ktp)); mesin harus mengirim UID KTP yang sama dengan yang ditautkan ke backend. Endpoint telemetri dan status realtime tersedia di backend; push FCM belum tersedia.
 
 ---
 
@@ -533,6 +533,14 @@ Pastikan snapshot status terbaru sudah ada di MongoDB `machine_latest` untuk set
 
 ```bash
 docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mongodb_machine_telemetry.sql
+
+Terakhir, jalankan migrasi performa satu kali. Migrasi ini menambah indeks `deposits(uid_hash, status)` untuk pencarian setoran tertahan saat KTP ditautkan, indeks `refresh_sessions(expires_at)`, dan kolom `deposits.has_photo` (NULL = belum diperiksa; diisi otomatis oleh API sehingga daftar riwayat tidak memeriksa filesystem per baris):
+
+```bash
+docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261101_performance_indexes.sql
+```
+
+Tambahkan juga `TRUST_PROXY=1` ke `.env` server bila API berada di belakang satu reverse proxy (lihat `.env.example`); tanpa itu pembatas laju (throttler) memakai IP proxy dan semua klien berbagi satu kuota. Port MySQL dan MongoDB di Compose kini hanya mendengarkan `127.0.0.1`; ubah `DB_BIND_ADDRESS` di `.env` bila memang perlu akses dari host lain.
 ```
 
 Setelah migrasi, cek `GET /api/v1/machines` dan log API sekali lagi.
@@ -551,7 +559,7 @@ Unggah foto laptop menggunakan `POST /api/v1/captures`, `X-Machine-Api-Key`, dan
 
 Validasi backend: jalankan `npm run build` dan `npm test` dari folder `backend`. Error API dinormalisasi menjadi `{ "code": "...", "message": "..." }` (error validasi juga menyertakan `details`).
 
-Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk jenis setoran `RESIDU` dan schema MQTT v2. Setelah snapshot status setiap device diverifikasi di MongoDB dan backup database sukses, jalankan [`20261031_mongodb_machine_telemetry.sql`](backend/docs/migrations/20261031_mongodb_machine_telemetry.sql) untuk menghapus kolom telemetry usang dari MySQL `machines`. Jalankan setiap migrasi satu kali dalam urutan ini; jangan mengaktifkan `DB_SYNCHRONIZE` di production.
+Untuk production yang sebelumnya memakai schema lama, jalankan [`20261027_public_nik_accounts.sql`](backend/docs/migrations/20261027_public_nik_accounts.sql) bila belum diterapkan, lalu [`20261031_mqtt_v2_alignment.sql`](backend/docs/migrations/20261031_mqtt_v2_alignment.sql) untuk jenis setoran `RESIDU` dan schema MQTT v2. Setelah snapshot status setiap device diverifikasi di MongoDB dan backup database sukses, jalankan [`20261031_mongodb_machine_telemetry.sql`](backend/docs/migrations/20261031_mongodb_machine_telemetry.sql) untuk menghapus kolom telemetry usang dari MySQL `machines`. Setelah itu jalankan [`20261101_performance_indexes.sql`](backend/docs/migrations/20261101_performance_indexes.sql). Jalankan setiap migrasi satu kali dalam urutan ini; jangan mengaktifkan `DB_SYNCHRONIZE` di production.
 
 ### Endpoint yang tersedia
 
@@ -575,7 +583,7 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | GET | `/api/v1/machines/realtime` | Pengguna (SSE) |
 | POST | `/api/v1/machines/:deviceId/command` | Admin |
 
-Riwayat admin mengambil hingga 1.000 setoran terbaru dari MySQL, termasuk status `HELD`/`CREDITED` dan transaksi yang belum terkait ke pengguna. Setelah setoran MQTT baru masuk, tekan **Muat ulang riwayat** pada menu admin. Jenis `RESIDU` ditampilkan terpisah dan bernilai nol poin.
+Riwayat admin mengambil setoran terbaru dari MySQL (parameter `limit`, default 500, maksimum 1.000; `from` opsional berformat ISO 8601), termasuk status `HELD`/`CREDITED` dan transaksi yang belum terkait ke pengguna. Setelah setoran MQTT baru masuk, tekan **Muat ulang riwayat** pada menu admin. Jenis `RESIDU` ditampilkan terpisah dan bernilai nol poin.
 
 Contoh registrasi:
 
@@ -707,6 +715,7 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 - Firmware ESP32, layanan AI laptop, push FCM, serta ACK aplikasi untuk penyelesaian aksi fisik belum ada di repository ini. Samakan implementasi perangkat dengan topic/payload dokumentasi sebelum mengaktifkan mesin.
 - Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.
 - Lockout login disimpan di memori proses dan kunci mesin saat ini satu nilai bersama; gunakan penyimpanan pembatasan terdistribusi dan kunci per mesin sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
+- Akun yang dinonaktifkan admin langsung kehilangan refresh token (tidak bisa memperpanjang sesi), tetapi access token yang sudah terbit tetap berlaku sampai kedaluwarsa (maksimal 15 menit). Sesi kedaluwarsa dibersihkan otomatis setiap 6 jam.
 
 ---
 
@@ -718,7 +727,7 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 | `JAVA_HOME is not set` | JDK tidak ditemukan | Set `JAVA_HOME` ke folder `jbr` Android Studio |
 | `Could not close incremental caches ... compileDebugKotlin` | Proyek dan Pub cache di drive berbeda | Sudah diatasi dengan `kotlin.incremental=false` di `android/gradle.properties`. Jalankan `.\android\gradlew.bat --stop` lalu `flutter clean` |
 | `The argument type 'TextTheme' can't be assigned to 'TextTheme?'` | Memakai `GoogleFonts.xxxTextTheme()` | Pakai `GoogleFonts.plusJakartaSans()` per gaya teks |
-| Font masih default / tidak muncul | Font Google diunduh saat pertama kali jalan | Pastikan HP terhubung internet saat pertama membuka aplikasi |
+| Font masih default / tidak muncul | Berkas di `google_fonts/` hilang atau belum terdaftar di `pubspec.yaml` (unduhan runtime dimatikan) | Pastikan folder `google_fonts/` ada dan terdaftar di `assets`, lalu `flutter clean`; `test/bundled_fonts_test.dart` memeriksanya |
 | HP tidak muncul di `flutter devices` | USB debugging mati atau izin belum diberikan | Aktifkan Opsi Pengembang → USB debugging, lalu izinkan pop-up di HP |
 | MQTT tersambung tetapi event tidak masuk; log broker menunjukkan subscription `smartbin/+/telemetry/` | Karakter `#` pada `MQTT_SUBSCRIBE_TOPIC` tanpa tanda kutip dianggap komentar oleh parser `.env` | Tulis `MQTT_SUBSCRIBE_TOPIC="smartbin/+/telemetry/#"` di `.env`, lalu recreate API |
 | `Performing an update on the path '_id' would modify the immutable field '_id'` | Snapshot MongoDB menerima `_id` milik event telemetry | Perbarui backend ke versi terbaru; event dan snapshot kini disimpan memakai dokumen update yang terpisah |

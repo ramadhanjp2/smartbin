@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { randomUUID } from "node:crypto";
 import { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
@@ -12,7 +13,15 @@ import {
 } from "./common/request-logging.interceptor";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Di belakang reverse proxy, IP klien asli dibaca dari X-Forwarded-For agar throttler tidak
+  // menganggap semua klien satu IP. Isi TRUST_PROXY dengan jumlah hop (mis. 1) atau "true".
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy)
+    app.set(
+      "trust proxy",
+      /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true",
+    );
   app.setGlobalPrefix(process.env.API_PREFIX ?? "api/v1");
   app.use((request: Request, response: Response, next: NextFunction) => {
     const traceableRequest = request as TraceableRequest;

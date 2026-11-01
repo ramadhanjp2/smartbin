@@ -3,7 +3,9 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleDestroy,
   OnModuleInit,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -12,7 +14,16 @@ import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcryptjs";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { DataSource, IsNull, MoreThan, Repository } from "typeorm";
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  LessThan,
+  MoreThan,
+  MoreThanOrEqual,
+  Repository,
+} from "typeorm";
 import { CardEntity } from "./entities/card.entity";
 import { DepositEntity } from "./entities/deposit.entity";
 import { MachineEntity } from "./entities/machine.entity";
@@ -24,6 +35,7 @@ import { UserEntity, UserRole } from "./entities/user.entity";
 import { calculatePoints } from "./points";
 import { CaptureStorageService } from "./capture-storage.service";
 import {
+  AdminHistoryQueryDto,
   DepositQueryDto,
   IngestDepositDto,
   LoginDto,
@@ -35,12 +47,19 @@ import {
   UpdateMachineDto,
 } from "./dto";
 
+const RATES_CACHE_MS = 30_000;
+const SESSION_PURGE_INTERVAL_MS = 6 * 60 * 60_000;
+const REVOKED_SESSION_RETENTION_MS = 7 * 24 * 60 * 60_000;
+
 @Injectable()
-export class SmartbinService implements OnModuleInit {
+export class SmartbinService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(SmartbinService.name);
   private readonly failures = new Map<
     string,
     { count: number; until: number }
   >();
+  private ratesCache?: { row: RateEntity; expiresAt: number };
+  private purgeTimer?: NodeJS.Timeout;
 
   constructor(
     @InjectRepository(UserEntity)
@@ -76,6 +95,33 @@ export class SmartbinService implements OnModuleInit {
           name: "SmartBIN Unit #01",
           location: "Lokasi pemasangan",
         }),
+      );
+    }
+    void this.purgeSessions();
+    this.purgeTimer = setInterval(
+      () => void this.purgeSessions(),
+      SESSION_PURGE_INTERVAL_MS,
+    );
+    this.purgeTimer.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.purgeTimer) clearInterval(this.purgeTimer);
+  }
+
+  /** Menghapus sesi kedaluwarsa dan sesi yang sudah lama dicabut agar tabel tidak tumbuh tanpa batas. */
+  async purgeSessions(): Promise<void> {
+    try {
+      await this.sessions.delete({ expiresAt: LessThan(new Date()) });
+      await this.sessions.delete({
+        revokedAt: LessThan(
+          new Date(Date.now() - REVOKED_SESSION_RETENTION_MS),
+        ),
+      });
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({ event: "sessions.purge_failed" }),
+        error instanceof Error ? error.stack : String(error),
       );
     }
   }
@@ -168,7 +214,7 @@ export class SmartbinService implements OnModuleInit {
       });
     }
     const user = await this.users.findOneBy({ id: session.userId });
-    if (!user)
+    if (!user || !user.active)
       throw new UnauthorizedException({
         code: "INVALID_REFRESH_TOKEN",
         message: "Sesi berakhir. Silakan masuk kembali.",
@@ -257,25 +303,39 @@ export class SmartbinService implements OnModuleInit {
       if (current) await cards.remove(current);
       await cards.save(cards.create({ userId, uidHash }));
 
-      const held = await manager.getRepository(DepositEntity).find({
+      const deposits = manager.getRepository(DepositEntity);
+      const held = await deposits.find({
         where: { uidHash, status: "HELD" },
         order: { receivedAt: "ASC" },
       });
       creditedDeposits = held.length;
-      for (const deposit of held) {
-        deposit.userId = userId;
-        deposit.status = "CREDITED";
-        await manager.getRepository(DepositEntity).save(deposit);
-        creditedPoints += deposit.points;
-        await manager.getRepository(PointLedgerEntity).save(
-          manager.getRepository(PointLedgerEntity).create({
+      if (!held.length) return;
+      creditedPoints = held.reduce((sum, deposit) => sum + deposit.points, 0);
+      await deposits.update(
+        { id: In(held.map((deposit) => deposit.id)) },
+        { userId, status: "CREDITED" },
+      );
+      const ledger = manager.getRepository(PointLedgerEntity);
+      await ledger.save(
+        ledger.create(
+          held.map((deposit) => ({
             userId,
             delta: deposit.points,
-            reason: "DEPOSIT",
+            reason: "DEPOSIT" as const,
             referenceId: deposit.transactionId,
-          }),
-        );
-      }
+          })),
+        ),
+      );
+      const notifications = manager.getRepository(NotificationEntity);
+      await notifications.save(
+        notifications.create({
+          userId,
+          kind: "deposit",
+          title: "Setoran tertahan dikreditkan",
+          body: `${held.length} setoran tertahan senilai ${creditedPoints} poin telah ditambahkan ke saldo Anda.`,
+          referenceId: held.length === 1 ? held[0].transactionId : null,
+        }),
+      );
     });
     return { linked: true, creditedPoints, creditedDeposits };
   }
@@ -300,49 +360,59 @@ export class SmartbinService implements OnModuleInit {
   }
 
   async pointsSummary(userId: string): Promise<unknown> {
-    const [entries, held] = await Promise.all([
-      this.ledger.find({ where: { userId } }),
-      this.depositsRepo.find({ where: { userId, status: "HELD" } }),
-    ]);
     const start = new Date();
     start.setUTCDate(1);
     start.setUTCHours(0, 0, 0, 0);
-    const monthDeposits = await this.depositsRepo
-      .createQueryBuilder("deposit")
-      .where("deposit.userId = :userId", { userId })
-      .andWhere("deposit.status = :status", { status: "CREDITED" })
-      .andWhere("deposit.deviceTime >= :start", { start })
-      .getMany();
-    const byType = (type: "ORGANIK" | "ANORGANIK" | "RESIDU") =>
-      monthDeposits.filter((deposit) => deposit.type === type);
+    const [balance, held, monthRows] = await Promise.all([
+      this.balanceOf(userId),
+      this.depositsRepo
+        .createQueryBuilder("deposit")
+        .select("COALESCE(SUM(deposit.points), 0)", "points")
+        .addSelect("COUNT(*)", "count")
+        .where("deposit.userId = :userId", { userId })
+        .andWhere("deposit.status = :status", { status: "HELD" })
+        .getRawOne<{ points: string; count: string }>(),
+      this.depositsRepo
+        .createQueryBuilder("deposit")
+        .select("deposit.type", "type")
+        .addSelect("COUNT(*)", "count")
+        .addSelect("COALESCE(SUM(deposit.weightG), 0)", "weightG")
+        .addSelect("COALESCE(SUM(deposit.points), 0)", "points")
+        .where("deposit.userId = :userId", { userId })
+        .andWhere("deposit.status = :status", { status: "CREDITED" })
+        .andWhere("deposit.deviceTime >= :start", { start })
+        .groupBy("deposit.type")
+        .getRawMany<{
+          type: "ORGANIK" | "ANORGANIK" | "RESIDU";
+          count: string;
+          weightG: string;
+          points: string;
+        }>(),
+    ]);
+    const byType = (type: "ORGANIK" | "ANORGANIK" | "RESIDU") => {
+      const row = monthRows.find((item) => item.type === type);
+      return {
+        count: Number(row?.count ?? 0),
+        weightG: Number(row?.weightG ?? 0),
+        points: Number(row?.points ?? 0),
+      };
+    };
+    const organic = byType("ORGANIK");
+    const inorganic = byType("ANORGANIK");
+    const residu = byType("RESIDU");
     return {
-      balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
-      heldPoints: held.reduce((sum, deposit) => sum + deposit.points, 0),
-      heldDeposits: held.length,
+      balance,
+      heldPoints: Number(held?.points ?? 0),
+      heldDeposits: Number(held?.count ?? 0),
       month: start.toISOString(),
-      organicG: byType("ORGANIK").reduce(
-        (sum, deposit) => sum + deposit.weightG,
-        0,
-      ),
-      inorganicG: byType("ANORGANIK").reduce(
-        (sum, deposit) => sum + deposit.weightG,
-        0,
-      ),
-      organicCount: byType("ORGANIK").length,
-      inorganicCount: byType("ANORGANIK").length,
-      organicPoints: byType("ORGANIK").reduce(
-        (sum, deposit) => sum + deposit.points,
-        0,
-      ),
-      inorganicPoints: byType("ANORGANIK").reduce(
-        (sum, deposit) => sum + deposit.points,
-        0,
-      ),
-      residuG: byType("RESIDU").reduce(
-        (sum, deposit) => sum + deposit.weightG,
-        0,
-      ),
-      residuCount: byType("RESIDU").length,
+      organicG: organic.weightG,
+      inorganicG: inorganic.weightG,
+      organicCount: organic.count,
+      inorganicCount: inorganic.count,
+      organicPoints: organic.points,
+      inorganicPoints: inorganic.points,
+      residuG: residu.weightG,
+      residuCount: residu.count,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -420,6 +490,7 @@ export class SmartbinService implements OnModuleInit {
     row.organikPerKg = dto.organikPerKg;
     row.anorganikPerKg = dto.anorganikPerKg;
     await repo.save(row);
+    this.ratesCache = undefined;
     return this.rates();
   }
 
@@ -486,6 +557,11 @@ export class SmartbinService implements OnModuleInit {
       user.passwordHash = await bcrypt.hash(dto.password, 12);
     if (dto.active !== undefined) user.active = dto.active;
     await this.users.save(user);
+    if (dto.active === false || dto.password !== undefined)
+      await this.sessions.update(
+        { userId: id, revokedAt: IsNull() },
+        { revokedAt: new Date() },
+      );
     return {
       id: user.id,
       name: user.name,
@@ -514,17 +590,20 @@ export class SmartbinService implements OnModuleInit {
     return { success: true };
   }
 
-  async adminHistory(): Promise<unknown> {
+  async adminHistory(query: AdminHistoryQueryDto): Promise<unknown> {
     const rows = await this.depositsRepo.find({
       relations: { machine: true, user: true },
+      where: query.from
+        ? { deviceTime: MoreThanOrEqual(new Date(query.from)) }
+        : undefined,
       order: { deviceTime: "DESC" },
-      take: 1000,
+      take: query.limit,
     });
     return rows.map((deposit) => ({
       id: deposit.transactionId,
       userId: deposit.userId ?? "-",
       userName: deposit.user?.name ?? "Pengguna tidak diketahui",
-      machine: deposit.machine?.name ?? deposit.machineId, 
+      machine: deposit.machine?.name ?? deposit.machineId,
       type:
         deposit.type === "ORGANIK"
           ? "Organik"
@@ -657,11 +736,10 @@ export class SmartbinService implements OnModuleInit {
     if (!card) return { found: false, name: null, balance: 0 };
     const user = await this.users.findOneBy({ id: card.userId });
     if (!user || !user.active) return { found: false, name: null, balance: 0 };
-    const entries = await this.ledger.find({ where: { userId: user.id } });
     return {
       found: true,
       name: user.name,
-      balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
+      balance: await this.balanceOf(user.id),
     };
   }
 
@@ -713,17 +791,10 @@ export class SmartbinService implements OnModuleInit {
       Number(weightG),
       new Date(timestamp),
     );
-    const deposit = await this.depositsRepo.findOneBy({ transactionId });
-    const card = deposit?.userId
-      ? await this.users.findOneBy({ id: deposit.userId })
-      : null;
-    const entries = card
-      ? await this.ledger.find({ where: { userId: card.id } })
-      : [];
     return {
       transactionId,
       points: result.points,
-      balance: entries.reduce((sum, entry) => sum + entry.delta, 0),
+      balance: result.userId ? await this.balanceOf(result.userId) : 0,
       status: result.status,
       duplicate: result.duplicate,
     };
@@ -742,17 +813,22 @@ export class SmartbinService implements OnModuleInit {
     points: number;
     status: string;
     duplicate: boolean;
+    userId: string | null;
   }> {
-    const duplicate = await this.depositsRepo.findOneBy({ transactionId });
+    const [duplicate, card, rates, hasPhoto] = await Promise.all([
+      this.depositsRepo.findOneBy({ transactionId }),
+      this.cards.findOneBy({ uidHash }),
+      this.getRates(),
+      this.captures.exists(transactionId),
+    ]);
     if (duplicate)
       return {
         transactionId: duplicate.transactionId,
         points: duplicate.points,
         status: duplicate.status,
         duplicate: true,
+        userId: duplicate.userId,
       };
-    const card = await this.cards.findOneBy({ uidHash });
-    const rates = await this.getRates();
     const rate =
       type === "ORGANIK"
         ? rates.organikPerKg
@@ -776,6 +852,7 @@ export class SmartbinService implements OnModuleInit {
             ratePerKg: rate,
             deviceTime,
             status,
+            hasPhoto,
           }),
         );
         if (card) {
@@ -804,6 +881,7 @@ export class SmartbinService implements OnModuleInit {
         points: deposit.points,
         status: deposit.status,
         duplicate: false,
+        userId: deposit.userId,
       };
     } catch (error) {
       if (this.isDuplicateKey(error)) {
@@ -816,10 +894,31 @@ export class SmartbinService implements OnModuleInit {
             points: duplicateDeposit.points,
             status: duplicateDeposit.status,
             duplicate: true,
+            userId: duplicateDeposit.userId,
           };
       }
       throw error;
     }
+  }
+
+  /** Dipanggil setelah foto tersimpan agar daftar riwayat tidak perlu memeriksa filesystem. */
+  async markCaptureStored(transactionId: string): Promise<void> {
+    await this.depositsRepo.update({ transactionId }, { hasPhoto: true });
+  }
+
+  private async balanceOf(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    const repo = manager
+      ? manager.getRepository(PointLedgerEntity)
+      : this.ledger;
+    const row = await repo
+      .createQueryBuilder("entry")
+      .select("COALESCE(SUM(entry.delta), 0)", "balance")
+      .where("entry.userId = :userId", { userId })
+      .getRawOne<{ balance: string }>();
+    return Number(row?.balance ?? 0);
   }
 
   async notifications(userId: string): Promise<unknown> {
@@ -933,13 +1032,23 @@ export class SmartbinService implements OnModuleInit {
       deviceTime: deposit.deviceTime.toISOString(),
       receivedAt: deposit.receivedAt.toISOString(),
       status: deposit.status,
-      photoUrl: (await this.captures.exists(deposit.transactionId))
+      photoUrl: (await this.hasPhoto(deposit))
         ? `captures/${encodeURIComponent(deposit.transactionId)}`
         : null,
     };
   }
 
+  private async hasPhoto(deposit: DepositEntity): Promise<boolean> {
+    if (deposit.hasPhoto !== null && deposit.hasPhoto !== undefined)
+      return deposit.hasPhoto;
+    const exists = await this.captures.exists(deposit.transactionId);
+    await this.depositsRepo.update({ id: deposit.id }, { hasPhoto: exists });
+    return exists;
+  }
+
   private async getRates(): Promise<RateEntity> {
+    if (this.ratesCache && this.ratesCache.expiresAt > Date.now())
+      return this.ratesCache.row;
     let row = await this.ratesRepo.findOneBy({ id: 1 });
     if (!row) {
       row = this.ratesRepo.create({
@@ -949,6 +1058,7 @@ export class SmartbinService implements OnModuleInit {
       });
       row = await this.ratesRepo.save(row);
     }
+    this.ratesCache = { row, expiresAt: Date.now() + RATES_CACHE_MS };
     return row;
   }
 

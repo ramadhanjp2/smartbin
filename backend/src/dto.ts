@@ -111,6 +111,19 @@ export class DepositQueryDto {
   cursor?: string;
 }
 
+export class AdminHistoryQueryDto {
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  limit = 500;
+}
+
 export class IngestDepositDto {
   @IsString()
   @MinLength(1)

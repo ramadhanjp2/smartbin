@@ -24,6 +24,7 @@ import {
   AuthenticatedRequest,
 } from "./auth/access-token.guard";
 import {
+  AdminHistoryQueryDto,
   CardLinkDto,
   DepositQueryDto,
   IngestDepositDto,
@@ -132,7 +133,7 @@ export class SmartbinController {
     @Req() req: AuthenticatedRequest,
     @Param("id") id: string,
   ): Promise<unknown> {
-    return this.service.deposit(req.user.sub, id);
+    return this.service.deposit(id, req.user.sub);
   }
 
   @Post("captures")
@@ -163,6 +164,7 @@ export class SmartbinController {
       throw new BadRequestException("Metadata unggahan foto tidak valid.");
     await this.service.validateCaptureDevice(deviceId);
     await this.captures.save(transactionId, file.mimetype, file.buffer);
+    await this.service.markCaptureStored(transactionId);
     return {
       transactionId,
       photoUrl: `captures/${encodeURIComponent(transactionId)}`,
@@ -246,9 +248,12 @@ export class SmartbinController {
 
   @UseGuards(AccessTokenGuard)
   @Get("admin/history")
-  adminHistory(@Req() req: AuthenticatedRequest): Promise<unknown> {
+  adminHistory(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: AdminHistoryQueryDto,
+  ): Promise<unknown> {
     this.service.assertAdmin(req.user.role);
-    return this.service.adminHistory();
+    return this.service.adminHistory(query);
   }
 
   @UseGuards(AccessTokenGuard)

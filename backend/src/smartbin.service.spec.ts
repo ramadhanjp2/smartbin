@@ -43,7 +43,7 @@ describe("SmartbinService token response", () => {
       {} as CaptureStorageService,
     );
 
-    await expect(service.adminHistory()).resolves.toEqual([
+    await expect(service.adminHistory({ limit: 500 })).resolves.toEqual([
       {
         id: "unlinked-test",
         userId: "-",
@@ -57,8 +57,9 @@ describe("SmartbinService token response", () => {
     ]);
     expect(deposits.find).toHaveBeenCalledWith({
       relations: { machine: true, user: true },
+      where: undefined,
       order: { deviceTime: "DESC" },
-      take: 1000,
+      take: 500,
     });
   });
 

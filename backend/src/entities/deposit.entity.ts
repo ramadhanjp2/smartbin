@@ -15,6 +15,7 @@ export type DepositStatus = "HELD" | "CREDITED";
 
 @Entity("deposits")
 @Index(["userId", "deviceTime"])
+@Index("idx_deposits_uid_hash_status", ["uidHash", "status"])
 export class DepositEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -71,4 +72,8 @@ export class DepositEntity {
 
   @Column({ type: "enum", enum: ["HELD", "CREDITED"], default: "HELD" })
   status!: DepositStatus;
+
+  /** null = belum diperiksa (baris lama); diisi saat foto diunggah atau saat pertama dibaca. */
+  @Column({ name: "has_photo", type: "boolean", nullable: true, default: null })
+  hasPhoto!: boolean | null;
 }
