@@ -86,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const AuthNotice(
                   icon: Icons.shield_outlined,
                   title: 'Proteksi Keamanan Aktif',
-                  body: 'Gagal 5× berturut-turut akan mengunci login sementara selama 5 menit.',
+                  body: 'Gagal 3× berturut-turut akan mengunci login sementara selama 5 menit.',
                   tone: PillTone.success,
                 ),
                 const SizedBox(height: 16),

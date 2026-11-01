@@ -310,6 +310,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
       return AdminHistoryRecord(
         id: _stringValue(json['id']),
         userId: _stringValue(json['userId'], fallback: '-'),
+        userName: _stringValue(json['userName'], fallback: 'Pengguna tidak diketahui'),
         machine: _stringValue(json['machine'], fallback: '-'),
         type: _stringValue(json['type'], fallback: '-'),
         weightKg: _doubleValue(json['weightKg']),

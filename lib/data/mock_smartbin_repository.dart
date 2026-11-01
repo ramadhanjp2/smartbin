@@ -253,12 +253,12 @@ class MockSmartbinRepository implements SmartbinRepository {
         (id == 'admin' ? _accounts['admin@smartbin.id'] : null);
     if (match == null || match.password != password) {
       _failedLogins++;
-      if (_failedLogins >= 5) {
+      if (_failedLogins >= 3) {
         _lockedUntil = DateTime.now().add(const Duration(minutes: 5));
         _failedLogins = 0;
-        throw const AppException('5 kali gagal berturut-turut. Login dikunci selama 5 menit.');
+              throw const AppException('3 kali gagal berturut-turut. Login dikunci selama 5 menit.');
       }
-      throw AppException('NIK/email atau kata sandi salah. Tersisa ${5 - _failedLogins}x percobaan.');
+            throw AppException('NIK/email atau kata sandi salah. Tersisa ${3 - _failedLogins}x percobaan.');
     }
     if (asAdmin && match.user.role != UserRole.admin) {
       throw const AppException('Akun ini tidak memiliki akses Admin / Teknisi.');

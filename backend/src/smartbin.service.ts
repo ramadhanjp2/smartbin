@@ -138,7 +138,7 @@ export class SmartbinService implements OnModuleInit {
       : false;
     if (!user || !valid) {
       const count = (attempt?.count ?? 0) + 1;
-      const max = Number(this.config.get("LOGIN_MAX_ATTEMPTS", 5));
+      const max = Number(this.config.get("LOGIN_MAX_ATTEMPTS", 3));
       this.failures.set(failureKey, {
         count,
         until: count >= max ? Date.now() + 5 * 60_000 : 0,
@@ -523,7 +523,8 @@ export class SmartbinService implements OnModuleInit {
     return rows.map((deposit) => ({
       id: deposit.transactionId,
       userId: deposit.userId ?? "-",
-      machine: deposit.machine?.name ?? deposit.machineId,
+      userName: deposit.user?.name ?? "Pengguna tidak diketahui",
+      machine: deposit.machine?.name ?? deposit.machineId, 
       type:
         deposit.type === "ORGANIK"
           ? "Organik"

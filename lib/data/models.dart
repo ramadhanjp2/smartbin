@@ -39,6 +39,7 @@ class AdminHistoryRecord {
   const AdminHistoryRecord({
     required this.id,
     required this.userId,
+    required this.userName,
     required this.machine,
     required this.type,
     required this.weightKg,
@@ -47,6 +48,7 @@ class AdminHistoryRecord {
   });
   final String id;
   final String userId;
+  final String userName;
   final String machine;
   final String type;
   final double weightKg;

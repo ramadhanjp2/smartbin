@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/format/formatters.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common.dart';
 import '../../data/models.dart';
@@ -328,7 +329,21 @@ class _UsersState extends ConsumerState<_Users> {
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(child: Text(user.name[0])),
               title: Text(user.name),
-              subtitle: Text('${user.email}\n${user.role} • ${user.active ? 'Aktif' : 'Nonaktif'}'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.email, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _InfoChip(label: user.role == 'admin' ? 'Admin' : 'Pengguna'),
+                      _InfoChip(label: user.active ? 'Aktif' : 'Nonaktif', color: user.active ? Colors.green : Colors.orange),
+                    ],
+                  ),
+                ],
+              ),
               isThreeLine: true,
               trailing: PopupMenuButton<String>(
                 itemBuilder: (_) => [
@@ -370,20 +385,24 @@ class _UsersState extends ConsumerState<_Users> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'NIK (16 digit)'),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Nama'),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: password,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
               ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: role,
                 decoration: const InputDecoration(labelText: 'Peran'),
@@ -431,16 +450,19 @@ class _UsersState extends ConsumerState<_Users> {
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Nama'),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
+              const SizedBox(height: 12),
               TextField(
                 controller: password,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password baru (opsional)'),
               ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: role,
                 decoration: const InputDecoration(labelText: 'Peran'),
@@ -514,6 +536,22 @@ class _UsersState extends ConsumerState<_Users> {
   }
 }
 
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, this.color});
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final chipColor = color ?? context.palette.brand;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: chipColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
+      child: Text(label, style: context.text.labelSmall?.copyWith(color: chipColor, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
 class _MachineManagement extends ConsumerWidget {
   const _MachineManagement({required this.machines});
   final List<Machine> machines;
@@ -535,9 +573,11 @@ class _MachineManagement extends ConsumerWidget {
           child: ListTile(
             contentPadding: EdgeInsets.zero,
             leading: IconTile(icon: Icons.delete_sweep_outlined, size: 46),
-            title: Text(machine.name),
+            title: Text(machine.name, maxLines: 2, overflow: TextOverflow.ellipsis),
             subtitle: Text(
               '${machine.location}\n${machine.status.label} • Organik ${machine.organicFill}% • Anorganik ${machine.inorganicFill}% • Residu ${machine.residuFill}%',
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
             ),
             isThreeLine: true,
             trailing: IconButton(icon: const Icon(Icons.tune), tooltip: 'Konfigurasi', onPressed: () => _configure(context, ref, machine)),
@@ -599,25 +639,33 @@ class _MachineConfigDialogState extends State<_MachineConfigDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text('Konfigurasi ${widget.machine.name}'),
-    content: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Nama mesin'),
-          ),
-          TextField(
-            controller: _location,
-            decoration: const InputDecoration(labelText: 'Lokasi'),
-          ),
-          TextField(
-            controller: _interval,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Interval telemetry (detik)'),
-          ),
-        ],
+    title: const Text('Konfigurasi mesin'),
+    content: SizedBox(
+      width: 360,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _name,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Nama mesin', alignLabelWithHint: true),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _location,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Lokasi', alignLabelWithHint: true),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _interval,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Interval telemetry (detik)', alignLabelWithHint: true),
+            ),
+          ],
+        ),
       ),
     ),
     actions: [
@@ -649,7 +697,7 @@ class _HistoryAllState extends State<_HistoryAll> {
   @override
   Widget build(BuildContext context) {
     final query = widget.search.text.toLowerCase();
-    final filtered = widget.history.where((h) => '${h.id} ${h.userId} ${h.machine} ${h.type}'.toLowerCase().contains(query)).toList();
+    final filtered = widget.history.where((h) => '${h.userName} ${h.userId} ${h.machine} ${h.type}'.toLowerCase().contains(query)).toList();
     if (widget.loading) {
       return const Center(
         child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()),
@@ -684,22 +732,57 @@ class _HistoryAllState extends State<_HistoryAll> {
           ),
         for (final item in filtered)
           SectionCard(
-            padding: const EdgeInsets.all(12),
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                child: Icon(
-                  item.type == 'Organik'
-                      ? Icons.compost
-                      : item.type == 'Residu'
-                      ? Icons.delete_outline
-                      : Icons.recycling,
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: context.palette.accentSoft,
+                  child: Icon(
+                    item.type == 'Organik'
+                        ? Icons.compost
+                        : item.type == 'Residu'
+                        ? Icons.delete_outline
+                        : Icons.recycling,
+                    color: context.palette.brand,
+                  ),
                 ),
-              ),
-              title: Text(item.id),
-              subtitle: Text('${item.userId} • ${item.machine}\n${item.weightKg} kg • ${item.points} poin • ${Fmt.dateTime(item.time)}'),
-              isThreeLine: true,
-              trailing: Text(item.type),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.userName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _InfoChip(label: item.type, color: context.palette.brand),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(item.machine, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.bodySmall?.copyWith(color: context.palette.textMuted)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          _InfoChip(label: '${item.weightKg} kg', color: context.palette.textSecondary),
+                          _InfoChip(label: '${item.points} poin', color: Colors.green),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(Fmt.dateTime(item.time), style: context.text.labelSmall?.copyWith(color: context.palette.textMuted)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -708,8 +791,8 @@ class _HistoryAllState extends State<_HistoryAll> {
 
   Future<void> _exportCsv(BuildContext context, List<AdminHistoryRecord> rows) async {
     String csvValue(Object value) => '"${value.toString().replaceAll('"', '""')}"';
-    const header = 'ID Transaksi,ID Pengguna,Mesin,Jenis,Berat kg,Poin,Waktu';
-    final data = rows.map((h) => [h.id, h.userId, h.machine, h.type, h.weightKg, h.points, Fmt.dateTime(h.time)].map(csvValue).join(',')).join('\n');
+    const header = 'Nama Pengguna,Mesin,Jenis,Berat kg,Poin,Waktu';
+    final data = rows.map((h) => [h.userName, h.machine, h.type, h.weightKg, h.points, Fmt.dateTime(h.time)].map(csvValue).join(',')).join('\n');
     try {
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/smartbin_history_${DateFormat('yyyyMMdd_HHmmss').format(Fmt.nowWib())}.csv');

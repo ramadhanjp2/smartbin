@@ -47,6 +47,7 @@ describe("SmartbinService token response", () => {
       {
         id: "unlinked-test",
         userId: "-",
+        userName: "Pengguna tidak diketahui",
         machine: "SmartBIN Unit #01",
         type: "Residu",
         weightKg: 0.5,
