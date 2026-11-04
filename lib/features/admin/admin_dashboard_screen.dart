@@ -46,7 +46,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return Scaffold(
       appBar: EyebrowAppBar(
         eyebrow: 'SmartBIN',
-        title: 'Dashboard Mesin',
+        title: 'Dashboard Admin',
         onBack: context.canPop() ? () => context.pop() : null,
         trailing: IconButton.filled(
           tooltip: 'Keluar',

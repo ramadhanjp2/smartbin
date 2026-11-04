@@ -236,7 +236,7 @@ class _TelemetryLog extends ConsumerWidget {
           switch (logs) {
             AsyncValue(:final value?) => Column(
               children: [
-                for (final l in value)
+                for (final l in value.take(5))
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),

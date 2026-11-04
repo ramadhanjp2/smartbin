@@ -183,7 +183,7 @@ void main() {
     await _start(tester, size: const Size(390, 2600));
     expect(find.text('Mode API: gunakan akun terdaftar. Login admin dan publik menggunakan form yang sama.'), findsOneWidget);
     await _login(tester, 'admin@smartbin.id', 'admin1234');
-    expect(find.text('Dashboard Mesin'), findsOneWidget);
+    expect(find.text('Dashboard Admin'), findsOneWidget);
     expect(find.text('Konfigurasi Nilai Poin'), findsOneWidget);
     await _shot('12_admin');
   });

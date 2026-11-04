@@ -234,7 +234,7 @@ class ApiSmartbinRepository implements SmartbinRepository {
 
   @override
   Future<List<TelemetryLog>> telemetry(String machineId) async {
-    final rows = _asList(await _request('GET', 'machines/${Uri.encodeComponent(machineId)}/telemetry', query: const {'limit': '100'}));
+    final rows = _asList(await _request('GET', 'machines/${Uri.encodeComponent(machineId)}/telemetry', query: const {'limit': '20'}));
     return rows.map((row) {
       final json = _asMap(row);
       final payload = _asMap(json['payload'] ?? const <String, Object?>{});
