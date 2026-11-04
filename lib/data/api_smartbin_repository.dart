@@ -53,10 +53,6 @@ class ApiSmartbinRepository implements SmartbinRepository {
     final response = _asMap(await _request('POST', 'auth/login', body: {'identifier': identifier, 'password': password}, authenticated: false));
     await _saveTokens(response);
     final user = _userFromJson(_asMap(response['user']));
-    if (asAdmin && user.role != UserRole.admin) {
-      await logout();
-      throw const AppException('Akun ini tidak memiliki akses Admin / Teknisi.');
-    }
     return user;
   }
 

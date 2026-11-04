@@ -96,13 +96,16 @@ class _CapacityRow extends StatelessWidget {
                     style: context.text.headlineLarge?.copyWith(color: color, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    percent >= 90
-                        ? 'Penuh'
-                        : percent >= 75
-                        ? 'Waspada'
-                        : 'Aman',
-                    style: context.text.labelMedium?.copyWith(color: color),
+                  Flexible(
+                    child: Text(
+                      percent >= 90
+                          ? 'Penuh'
+                          : percent >= 75
+                          ? 'Waspada'
+                          : 'Aman',
+                      style: context.text.labelMedium?.copyWith(color: color),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

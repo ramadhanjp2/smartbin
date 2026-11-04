@@ -261,9 +261,6 @@ class MockSmartbinRepository implements SmartbinRepository {
       }
       throw AppException('NIK/email atau kata sandi salah. Tersisa ${3 - _failedLogins}x percobaan.');
     }
-    if (asAdmin && match.user.role != UserRole.admin) {
-      throw const AppException('Akun ini tidak memiliki akses Admin / Teknisi.');
-    }
     _failedLogins = 0;
     return _session = match.user;
   }

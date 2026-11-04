@@ -25,7 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _form = GlobalKey<FormState>();
   final _id = TextEditingController();
   final _pw = TextEditingController();
-  bool _admin = false;
+  bool get _admin => false;
   bool _obscure = true;
   bool _busy = false;
   String? _error;
@@ -76,8 +76,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 subtitle: 'Setor sampah, kumpulkan poin, dan jaga bumi bersama SmartBIN.',
               ),
               const SizedBox(height: 20),
-              _RoleToggle(admin: _admin, onChanged: (v) => setState(() => _admin = v)),
-              const SizedBox(height: 16),
               if (widget.message != null) ...[
                 AuthNotice(icon: Icons.info_outline, title: 'Sesi berakhir', body: widget.message!, tone: PillTone.warning),
                 const SizedBox(height: 16),
