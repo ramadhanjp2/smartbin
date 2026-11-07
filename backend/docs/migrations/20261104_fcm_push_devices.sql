@@ -1,3 +1,4 @@
+-- Inherit the database charset/collation so user_id matches users.id for its FK.
 CREATE TABLE push_devices (
   id varchar(36) NOT NULL,
   user_id varchar(36) NOT NULL,
@@ -11,4 +12,4 @@ CREATE TABLE push_devices (
   KEY ix_push_devices_user_id (user_id),
   CONSTRAINT fk_push_devices_user
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB;
