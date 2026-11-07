@@ -25,6 +25,7 @@ type Mocks = Partial<{
   sessions: object;
   dataSource: object;
   captures: object;
+  pushNotifications: object;
 }>;
 
 function build(
@@ -53,6 +54,12 @@ function build(
     {} as JwtService,
     config,
     (mocks.captures ?? {}) as CaptureStorageService,
+    (mocks.pushNotifications ??
+      {
+        sendToUser: jest.fn().mockResolvedValue(undefined),
+        registerDevice: jest.fn().mockResolvedValue(undefined),
+        unregisterDevice: jest.fn().mockResolvedValue(undefined),
+      }) as never,
   );
 }
 

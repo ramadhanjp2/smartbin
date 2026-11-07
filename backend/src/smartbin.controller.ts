@@ -40,6 +40,7 @@ import {
   UpdateMachineDto,
   CreateAdminUserDto,
   UpdateAdminUserDto,
+  PushDeviceTokenDto,
 } from "./dto";
 import { SmartbinService } from "./smartbin.service";
 import { MachineTelemetryService } from "./machine-telemetry.service";
@@ -402,6 +403,24 @@ export class SmartbinController {
   @Get("notifications")
   notifications(@Req() req: AuthenticatedRequest): Promise<unknown> {
     return this.service.notifications(req.user.sub);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post("notifications/device-token")
+  registerPushDevice(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: PushDeviceTokenDto,
+  ): Promise<{ success: true }> {
+    return this.service.registerPushDevice(req.user.sub, dto.token);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Delete("notifications/device-token")
+  unregisterPushDevice(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: PushDeviceTokenDto,
+  ): Promise<{ success: true }> {
+    return this.service.unregisterPushDevice(req.user.sub, dto.token);
   }
 
   @UseGuards(AccessTokenGuard)

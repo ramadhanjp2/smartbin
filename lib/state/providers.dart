@@ -1,17 +1,18 @@
-import 'dart:typed_data';
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/router/app_router.dart';
 import '../data/api_smartbin_repository.dart';
 import '../data/mock_smartbin_repository.dart';
 import '../data/models.dart';
 import '../data/nfc_reader.dart';
+import '../data/push_notification_service.dart';
 import '../data/smartbin_repository.dart';
 
 /// Di-override di `main()` setelah SharedPreferences siap.
@@ -34,6 +35,11 @@ final repositoryProvider = Provider<SmartbinRepository>((ref) {
 });
 
 final nfcReaderProvider = Provider<NfcReader>((ref) => PlatformNfcReader());
+final pushNotificationProvider = Provider<PushNotificationService>((ref) {
+  final service = PushNotificationService();
+  ref.onDispose(() => unawaited(service.dispose()));
+  return service;
+});
 
 // ---------------- Preferensi perangkat ----------------
 
@@ -68,7 +74,7 @@ class OnboardingController extends Notifier<bool> {
 
 final onboardingSeenProvider = NotifierProvider<OnboardingController, bool>(OnboardingController.new);
 
-class NotificationSoundController extends Notifier<bool> {
+class NotificationPushController extends Notifier<bool> {
   static const _key = 'notif_sound';
 
   @override
@@ -77,10 +83,11 @@ class NotificationSoundController extends Notifier<bool> {
   void set(bool v) {
     state = v;
     ref.read(sharedPrefsProvider).setBool(_key, v);
+    unawaited(ref.read(authProvider.notifier).updatePushPreference(v));
   }
 }
 
-final notificationSoundProvider = NotifierProvider<NotificationSoundController, bool>(NotificationSoundController.new);
+final notificationPushEnabledProvider = NotifierProvider<NotificationPushController, bool>(NotificationPushController.new);
 
 class NfcEnabledController extends Notifier<bool> {
   static const _key = 'nfc_enabled';
@@ -115,17 +122,22 @@ class AuthController extends Notifier<AuthState> {
   Future<void> login(String identifier, String password, {required bool asAdmin}) async {
     final user = await _repo.login(identifier: identifier, password: password, asAdmin: asAdmin);
     state = AuthState(user: user);
+    await _syncPushToken();
   }
 
   Future<void> restoreSession() async {
     final user = await _repo.restoreSession();
-    if (user != null) state = AuthState(user: user);
+    if (user != null) {
+      state = AuthState(user: user);
+      await _syncPushToken();
+    }
   }
 
   Future<void> register({required String nik, required String name, required String email, required String password}) async {
     final user = await _repo.register(nik: nik, name: name, email: email, password: password);
     _invalidateUserData();
     state = AuthState(user: user, needsCardSetup: true);
+    await _syncPushToken();
   }
 
   void finishCardSetup() => state = AuthState(user: state.user);
@@ -134,10 +146,69 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> logout() async {
     try {
+      await _unregisterPushToken();
       await _repo.logout();
     } finally {
       _invalidateUserData();
       state = const AuthState();
+    }
+  }
+
+  Future<void> updatePushPreference(bool enabled) async {
+    if (enabled) {
+      await _syncPushToken();
+    } else {
+      await _unregisterPushToken();
+    }
+  }
+
+  Future<void> _syncPushToken() async {
+    if (!PushNotificationService.enabled || !ref.read(notificationPushEnabledProvider) || state.user == null) {
+      return;
+    }
+    try {
+      final push = ref.read(pushNotificationProvider);
+      await push.initialize(
+        onToken: (token) async {
+          if (state.user != null && ref.read(notificationPushEnabledProvider)) {
+            await _repo.registerPushToken(token);
+          }
+        },
+        onOpen: _openPushNotification,
+      );
+      final token = await push.requestPermissionAndGetToken();
+      if (token != null) await _repo.registerPushToken(token);
+    } on AppException catch (error) {
+      debugPrint('SmartBIN push registration failed: ${error.message}');
+    } on PlatformException catch (error) {
+      debugPrint('SmartBIN push registration failed: ${error.code}');
+    } catch (error) {
+      debugPrint('SmartBIN push initialization failed: $error');
+    }
+  }
+
+  Future<void> _unregisterPushToken() async {
+    if (!PushNotificationService.enabled || state.user == null) return;
+    try {
+      final token = await ref.read(pushNotificationProvider).currentToken();
+      if (token != null) await _repo.unregisterPushToken(token);
+    } on AppException catch (error) {
+      debugPrint('SmartBIN push token removal failed: ${error.message}');
+    } on PlatformException catch (error) {
+      debugPrint('SmartBIN push token removal failed: ${error.code}');
+    } catch (error) {
+      debugPrint('SmartBIN push token removal failed: $error');
+    }
+  }
+
+  void _openPushNotification(Map<String, String> data) {
+    ref.invalidate(notificationsProvider);
+    final depositId = data['depositId'];
+    final router = ref.read(routerProvider);
+    if (depositId != null && depositId.isNotEmpty) {
+      router.go('/deposit/${Uri.encodeComponent(depositId)}');
+    } else {
+      router.go('/notifications');
     }
   }
 

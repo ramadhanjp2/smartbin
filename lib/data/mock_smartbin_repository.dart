@@ -506,6 +506,12 @@ class MockSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<void> registerPushToken(String token) async {}
+
+  @override
+  Future<void> unregisterPushToken(String token) async {}
+
+  @override
   Future<void> markNotificationRead(String id) async {
     await Future.delayed(const Duration(milliseconds: 200));
     _notifications = [for (final n in _notifications) n.id == id ? n.markRead() : n];

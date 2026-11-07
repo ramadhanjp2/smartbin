@@ -4,7 +4,7 @@ Aplikasi publik untuk membuat akun dengan NIK dan email, melihat saldo poin/riwa
 
 Dokumen ini adalah **acuan kerja tim**. Baca sampai habis sebelum mulai coding, dan ikuti aturannya supaya kode kita tetap seragam dan tidak saling menimpa.
 
-> Status saat ini: Flutter memakai API publik sebagai default (`https://api-smartbin.ramadhanjp.my.id/api/v1`). URL bisa diganti ke backend lokal lewat `--dart-define`; mock tetap tersedia untuk demo. REST telemetri, status/reset MQTT, dukungan setoran residu, foto lokal persisten, dan pembacaan UID NFC Android tersedia di kode. Firmware ESP32/laptop AI dan push FCM masih perlu integrasi tersendiri. Lihat [Status pekerjaan](#status-pekerjaan).
+> Status saat ini: Flutter memakai API publik sebagai default (`https://api-smartbin.ramadhanjp.my.id/api/v1`). URL bisa diganti ke backend lokal lewat `--dart-define`; mock tetap tersedia untuk demo. REST telemetri, status/reset MQTT, dukungan setoran residu, foto lokal persisten, pembacaan UID NFC Android, dan alur push FCM tersedia di kode. FCM perlu konfigurasi Firebase dan kredensial server sebelum diaktifkan. Lihat [Notifikasi push FCM](#notifikasi-push-fcm).
 
 ---
 
@@ -373,7 +373,20 @@ flutter build apk --dart-define=API_BASE_URL=https://api-smartbin.ramadhanjp.my.
 
 Token akses dan refresh disimpan menggunakan `flutter_secure_storage`, lalu sesi dicoba dipulihkan saat aplikasi dibuka kembali. Android release hanya mengizinkan koneksi HTTPS; HTTP cleartext untuk alamat lokal diaktifkan **khusus manifest debug**, bukan APK release. Untuk HP fisik, pastikan backend mendengarkan di `0.0.0.0`, firewall membuka port API, dan HP berada pada jaringan yang dapat menjangkau komputer. Chrome juga memerlukan konfigurasi CORS backend yang mengizinkan origin aplikasi.
 
-API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. Pembacaan UID NFC Android sudah aktif (lihat [Uji pemindaian NFC e-KTP](#uji-pemindaian-nfc-e-ktp)); mesin harus mengirim UID KTP yang sama dengan yang ditautkan ke backend. Endpoint telemetri dan status realtime tersedia di backend; push FCM belum tersedia.
+API publik `/api/v1/health` telah diverifikasi merespons. Akun tetap harus terdaftar pada backend tersebut. Pembacaan UID NFC Android sudah aktif (lihat [Uji pemindaian NFC e-KTP](#uji-pemindaian-nfc-e-ktp)); mesin harus mengirim UID KTP yang sama dengan yang ditautkan ke backend. Endpoint telemetri dan status realtime tersedia di backend.
+
+### Notifikasi push FCM
+
+Push hanya aktif setelah konfigurasi Firebase dipasang. Alur ini mendukung Android/iOS, notifikasi saat aplikasi di latar depan, pembukaan detail setoran dari notifikasi, serta sinkronisasi/penghapusan token pada login/logout dan pengaturan notifikasi.
+
+1. Buat project Firebase, daftarkan aplikasi Android dengan application ID `com.example.smartbin`, lalu unduh `google-services.json` ke `android/app/`.
+2. Daftarkan bundle ID iOS dari Xcode project, tambahkan `GoogleService-Info.plist` ke target `Runner`, aktifkan capability **Push Notifications** pada target Runner di Xcode, dan unggah APNs authentication key di Firebase Console untuk push iOS.
+3. Aktifkan Firebase Cloud Messaging pada project tersebut. File konfigurasi aplikasi hanya untuk klien; jangan memasukkan kredensial service account server ke aplikasi.
+4. Jalankan aplikasi dengan `--dart-define=FCM_ENABLED=true`. Tanpa flag ini push dinonaktifkan sehingga build/demo yang belum dikonfigurasi tetap dapat berjalan.
+5. Untuk backend, atur `FIREBASE_PROJECT_ID` dan kredensial Google Application Default Credentials (ADC). Pada server non-Google, isi `GOOGLE_APPLICATION_CREDENTIALS` dengan path file service account yang disimpan aman di server/container; jangan commit file tersebut atau mengirimkannya ke klien.
+6. Terapkan [`20261104_fcm_push_devices.sql`](backend/docs/migrations/20261104_fcm_push_devices.sql) satu kali pada database production sebelum deploy backend yang baru. Setoran yang sudah tercatat dan setoran tertahan yang baru dikreditkan akan membuat notifikasi inbox dan mengirim push jika FCM backend sudah dikonfigurasi.
+
+Token perangkat disimpan per pengguna dan token invalid dihapus setelah FCM menolaknya. Pengaturan push di halaman Profil/Notifikasi juga menonaktifkan pendaftaran token pada backend.
 
 ---
 
@@ -449,7 +462,7 @@ Minimal satu teman me-review sebelum PR di-merge.
 | Pemindaian UID NFC e-KTP (Android) | 🟡 Implementasi aktif | Membaca UID NFC-A asli; perlu diuji dengan kartu e-KTP dan pembaca mesin yang digunakan |
 | Backend REST NestJS + MySQL (`/api/v1`) | 🟡 MVP tersedia | API publik default; URL lokal dapat dipilih via `API_BASE_URL` |
 | Token di secure storage + refresh token | ✅ Selesai | `flutter_secure_storage`; sesi dipulihkan saat aplikasi dibuka |
-| Push notification | ⏳ Belum | FCM belum dikonfigurasi pada backend dan aplikasi (`firebase_messaging`) |
+| Push notification | 🟡 Implementasi siap konfigurasi | Registrasi FID, push setoran, dan notifikasi foreground tersedia; perlu konfigurasi Firebase klien, kredensial ADC backend, dan migrasi tabel perangkat |
 | Status mesin realtime | ✅ Selesai | SSE `/machines/realtime` + polling cadangan 60 detik; berhenti saat layar tidak tampil |
 | Riwayat berhalaman | ✅ Selesai | Setoran dimuat 20 per halaman (cursor); total dan ringkasan dari `/deposits/stats`. Riwayat admin 50 per halaman |
 | Cache offline 50 riwayat | ⏳ Belum | `drift` atau `hive` (FR-HIST-04) |
@@ -522,6 +535,14 @@ Jika migrasi identitas NIK lama `20261027_public_nik_accounts.sql` belum pernah 
 docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261031_mqtt_v2_alignment.sql
 ```
 
+Sebelum deploy backend FCM, tinjau dan jalankan migrasi token perangkat satu kali:
+
+```bash
+docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < docs/migrations/20261104_fcm_push_devices.sql
+```
+
+Jika mengaktifkan pengiriman push di server, simpan service account di lokasi yang tidak berada di repository, atur `FIREBASE_PROJECT_ID` dan `GOOGLE_APPLICATION_CREDENTIALS` pada `.env`, lalu pastikan file tersebut tersedia di dalam container API. Backend tetap menyimpan notifikasi inbox walau FCM belum dikonfigurasi.
+
 Pastikan baris mesin `bin-01` dan `bin-02` tersedia di tabel `machines` sesuai `MQTT_DEVICE_MACHINE_MAP`; seed `docs/seed.sql` menyiapkan keduanya untuk setup demo. Setelah backup dan migrasi yang diperlukan sukses, build dan recreate **hanya API** agar MySQL, MongoDB, serta volume foto/telemetri tetap berjalan:
 
 ```bash
@@ -585,6 +606,7 @@ Semua endpoint selain registrasi, login, refresh, health-check, dan endpoint mes
 | POST, DELETE | `/api/v1/cards/link`, `/api/v1/cards/me` | Pengguna |
 | GET | `/api/v1/points/summary`, `/api/v1/deposits`, `/api/v1/deposits/stats`, `/api/v1/deposits/:id`, `/api/v1/rates`, `/api/v1/machines`, `/api/v1/notifications` | Pengguna |
 | GET | `/api/v1/captures/:transactionId` | Pemilik setoran atau admin (JWT) |
+| POST, DELETE | `/api/v1/notifications/device-token` | Pengguna (token perangkat FCM) |
 | POST | `/api/v1/notifications/:id/read`, `/api/v1/notifications/read-all` | Pengguna |
 | GET | `/api/v1/admin/history` | Admin (semua setoran, termasuk setoran tanpa KTP tertaut) |
 | GET | `/api/v1/admin/stats/daily` | Admin (berat per hari, WIB; `days` 1–31, default 7) |
@@ -739,9 +761,9 @@ MongoDB 8 otomatis membuat indeks pada event `(deviceId, receivedAt)`, `(kind, r
 ### Batas MVP backend
 
 - Broker MQTT eksternal harus tersedia agar ingestion dan command realtime aktif.
-- Pengiriman push FCM dan pendaftaran token perangkat belum diaktifkan; backend hanya menyimpan dan menyajikan notifikasi aplikasi.
-- Firmware ESP32, layanan AI laptop, push FCM, serta ACK aplikasi untuk penyelesaian aksi fisik belum ada di repository ini. Samakan implementasi perangkat dengan topic/payload dokumentasi sebelum mengaktifkan mesin.
-- Skema lokal dibuat otomatis untuk development; siapkan migration versioned sebelum deploy production.
+- Push FCM berjalan setelah Firebase klien, kredensial ADC backend, dan migrasi tabel `push_devices` dikonfigurasi. Pemicu push saat ini adalah notifikasi setoran.
+- Firmware ESP32, layanan AI laptop, serta ACK aplikasi untuk penyelesaian aksi fisik belum ada di repository ini. Samakan implementasi perangkat dengan topic/payload dokumentasi sebelum mengaktifkan mesin.
+- Skema lokal dibuat otomatis untuk development; production harus menerapkan migrasi versioned sebelum deploy.
 - Lockout login disimpan di memori proses; gunakan penyimpanan pembatasan terdistribusi sebelum menjalankan banyak replika atau deployment produksi. Terminasikan HTTPS di reverse proxy.
 - Akun yang dinonaktifkan admin langsung kehilangan refresh token (tidak bisa memperpanjang sesi), tetapi access token yang sudah terbit tetap berlaku sampai kedaluwarsa (maksimal 15 menit). Sesi kedaluwarsa dibersihkan otomatis setiap 6 jam.
 

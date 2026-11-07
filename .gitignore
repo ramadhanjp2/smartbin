@@ -45,6 +45,10 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Local Firebase configuration and server credentials
+/android/app/google-services.json
+/backend/smartbin-notif-91c98fd83c1a.json
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

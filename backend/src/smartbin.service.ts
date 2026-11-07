@@ -34,6 +34,7 @@ import { RefreshSessionEntity } from "./entities/refresh-session.entity";
 import { UserEntity, UserRole } from "./entities/user.entity";
 import { calculatePoints } from "./points";
 import { CaptureStorageService } from "./capture-storage.service";
+import { PushNotificationService } from "./push-notification.service";
 import {
   AdminHistoryQueryDto,
   DepositQueryDto,
@@ -83,6 +84,7 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly captures: CaptureStorageService,
+    private readonly pushNotifications: PushNotificationService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -104,6 +106,22 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
       SESSION_PURGE_INTERVAL_MS,
     );
     this.purgeTimer.unref();
+  }
+
+  async registerPushDevice(
+    userId: string,
+    token: string,
+  ): Promise<{ success: true }> {
+    await this.pushNotifications.registerDevice(userId, token);
+    return { success: true };
+  }
+
+  async unregisterPushDevice(
+    userId: string,
+    token: string,
+  ): Promise<{ success: true }> {
+    await this.pushNotifications.unregisterDevice(userId, token);
+    return { success: true };
   }
 
   onModuleDestroy(): void {
@@ -338,6 +356,13 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
         }),
       );
     });
+    if (creditedDeposits > 0) {
+      void this.pushNotifications.sendToUser(userId, {
+        kind: "deposit",
+        title: "Setoran tertahan dikreditkan",
+        body: `${creditedDeposits} setoran tertahan senilai ${creditedPoints} poin telah ditambahkan ke saldo Anda.`,
+      });
+    }
     return { linked: true, creditedPoints, creditedDeposits };
   }
 
@@ -995,6 +1020,14 @@ export class SmartbinService implements OnModuleInit, OnModuleDestroy {
         }
         return saved;
       });
+      if (card) {
+        void this.pushNotifications.sendToUser(card.userId, {
+          kind: "deposit",
+          title: "Setoran berhasil tercatat",
+          body: `Setoran ${weightG} g ${type.toLowerCase()} memperoleh ${points} poin.`,
+          depositId: transactionId,
+        });
+      }
       return {
         transactionId: deposit.transactionId,
         points: deposit.points,

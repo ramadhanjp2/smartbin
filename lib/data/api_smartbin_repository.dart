@@ -312,6 +312,16 @@ class ApiSmartbinRepository implements SmartbinRepository {
   }
 
   @override
+  Future<void> registerPushToken(String token) async {
+    await _request('POST', 'notifications/device-token', body: {'token': token});
+  }
+
+  @override
+  Future<void> unregisterPushToken(String token) async {
+    await _request('DELETE', 'notifications/device-token', body: {'token': token});
+  }
+
+  @override
   Future<void> markNotificationRead(String id) async {
     await _request('POST', 'notifications/${Uri.encodeComponent(id)}/read');
   }

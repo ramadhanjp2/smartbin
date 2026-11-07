@@ -60,6 +60,24 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               AsyncValue(:final error?) => ErrorView(error: error, onRetry: () => ref.invalidate(machinesProvider)),
               _ => const SkeletonList(count: 4),
             },
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) => SectionCard(
+                color: p.cardMuted,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: CircleAvatar(
+                    backgroundColor: p.card,
+                    child: Icon(Icons.tune, color: p.textPrimary),
+                  ),
+                  title: Text('Preferensi Notifikasi Push', style: context.text.labelLarge?.copyWith(color: p.textPrimary)),
+                  subtitle: Text('Peringatan setoran SmartBIN', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  value: ref.watch(notificationPushEnabledProvider),
+                  onChanged: (v) => ref.read(notificationPushEnabledProvider.notifier).set(v),
+                ),
+              ),
+            ),
           ],
         ),
       ),

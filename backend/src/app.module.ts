@@ -17,6 +17,8 @@ import { PointLedgerEntity } from "./entities/point-ledger.entity";
 import { RateEntity } from "./entities/rate.entity";
 import { RefreshSessionEntity } from "./entities/refresh-session.entity";
 import { UserEntity } from "./entities/user.entity";
+import { PushDeviceEntity } from "./entities/push-device.entity";
+import { PushNotificationService } from "./push-notification.service";
 
 const entities = [
   UserEntity,
@@ -27,6 +29,7 @@ const entities = [
   RateEntity,
   NotificationEntity,
   RefreshSessionEntity,
+  PushDeviceEntity,
 ];
 
 @Module({
@@ -82,6 +85,7 @@ const entities = [
     SmartbinService,
     MachineTelemetryService,
     CaptureStorageService,
+    PushNotificationService,
     AccessTokenGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

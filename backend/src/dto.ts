@@ -52,6 +52,13 @@ export class RefreshDto {
   refreshToken!: string;
 }
 
+export class PushDeviceTokenDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(4096)
+  token!: string;
+}
+
 export class UpdateMeDto {
   @IsOptional()
   @IsString()

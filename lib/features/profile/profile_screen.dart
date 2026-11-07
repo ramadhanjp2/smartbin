@@ -217,12 +217,12 @@ class ProfileScreen extends ConsumerWidget {
                 SwitchListTile(
                   secondary: CircleAvatar(
                     backgroundColor: p.cardMuted,
-                    child: Icon(Icons.volume_up_outlined, color: p.textSecondary),
+                    child: Icon(Icons.notifications_active_outlined, color: p.textSecondary),
                   ),
-                  title: Text('Notifikasi & Suara', style: context.text.labelLarge?.copyWith(color: p.textSecondary)),
-                  subtitle: Text('Aktifkan peringatan setoran, mesin, dan KTP', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
-                  value: ref.watch(notificationSoundProvider),
-                  onChanged: (v) => ref.read(notificationSoundProvider.notifier).set(v),
+                  title: Text('Notifikasi Push', style: context.text.labelLarge?.copyWith(color: p.textSecondary)),
+                  subtitle: Text('Aktifkan peringatan setoran SmartBIN', style: context.text.bodySmall?.copyWith(color: p.textMuted)),
+                  value: ref.watch(notificationPushEnabledProvider),
+                  onChanged: (v) => ref.read(notificationPushEnabledProvider.notifier).set(v),
                 ),
                 SwitchListTile(
                   secondary: CircleAvatar(

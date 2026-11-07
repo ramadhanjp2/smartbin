@@ -44,6 +44,8 @@ abstract class SmartbinRepository {
 
   // Notifikasi
   Future<List<AppNotification>> notifications();
+  Future<void> registerPushToken(String token);
+  Future<void> unregisterPushToken(String token);
   Future<void> markNotificationRead(String id);
   Future<void> markAllNotificationsRead();
 

@@ -41,6 +41,7 @@ describe("SmartbinService token response", () => {
       {} as JwtService,
       new ConfigService(),
       {} as CaptureStorageService,
+      {} as never,
     );
 
     await expect(service.adminHistory({ limit: 500 })).resolves.toEqual([
@@ -94,6 +95,7 @@ describe("SmartbinService token response", () => {
       jwt as unknown as JwtService,
       config,
       {} as CaptureStorageService,
+      {} as never,
     );
     const user = {
       id: "user-1",
